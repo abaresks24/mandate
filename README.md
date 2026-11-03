@@ -159,6 +159,23 @@ scripts/demo.sh                            # the 10 beats below
 
 ---
 
+## ✅ Proven LIVE on NEAR testnet (not sandbox)
+
+The full hero path was executed on real testnet, every step on-chain:
+
+| Beat | On-chain result |
+|---|---|
+| Out-of-mandate action (prompt-injection) | **rejected by the vault, committee never contacted** |
+| Valid cross-chain Morpho action | ActionId `a1` created |
+| Committee draw | `[g5,g1,g2]`, quorum-bond>value invariant enforced |
+| Commit → reveal (sha256 verified on-chain) | 3 commits, 3 reveals accepted |
+| Tally | **3/3, threshold met** |
+| `execute_action` | **Executed** — committee facts applied, EVM tx built (RLP+keccak), Chain Signatures MPC sign requested (32-byte payload, path `mandate-vault,eth`) |
+| Slashing (corrupt guardian `g7` lies) | 2 honest refuse → tally **1/3 blocked** → `FalseAttestation` challenge → **g7 bond 3 NEAR slashed, challenger paid 1.6 NEAR** |
+| Kill switch | **repatriated 5 USDC to owner** |
+
+Remaining to finish the cross-chain leg end-to-end: broadcast the MPC-signed tx onto Ethereum Sepolia (needs Sepolia ETH at the MPC-derived address — faucet-gated).
+
 ## Live on NEAR testnet (deployed + verifiable)
 
 | Contract | Account | State |
