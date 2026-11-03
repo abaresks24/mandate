@@ -159,6 +159,21 @@ scripts/demo.sh                            # the 10 beats below
 
 ---
 
+## Live on NEAR testnet (deployed + verifiable)
+
+| Contract | Account | State |
+|---|---|---|
+| Coordinator | `coordinator.mandate-arthur.testnet` | 5 guardians registered, 14 NEAR bonded |
+| Vault (demo) | `demo.vaults.mandate-arthur.testnet` | initialized, permanent-committee mandate |
+| Guardians | `g1..g5-marthur.testnet` | Active, bonds 3/3/3/2/3 NEAR |
+| Guardian WASM | [`res/guardian.wasm`](./res/guardian.wasm) | sha256 `1cae595d0eb333dde74740d4ddadf72074d2f3e6ac73211b17d61dc884c72109` |
+
+Verify yourself:
+```bash
+near contract call-function as-read-only demo.vaults.mandate-arthur.testnet view_mandate json-args '{}' network-config testnet now
+near contract call-function as-read-only coordinator.mandate-arthur.testnet view_guardian json-args '{"guardian_id":"g1"}' network-config testnet now
+```
+
 ## Test it (do X → see Y): the 10-beat walkthrough
 
 Each beat is a command → an observation. Beats touching external services are
