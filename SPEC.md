@@ -104,7 +104,7 @@ view_action(action_id) -> ActionState
 ## Guardian WASM — entry + behavior
 - Built for `wasm32-wasip2`, crate `outlayer = "0.2"`.
 - Input (from `request_execution.input_data`): `{ action_id, template, vault_id, coordinator_rpc }`.
-- Reads NEAR state via `outlayer::near::rpc::api::view()`; fetches external facts via `wasi-http-client` (prefer cryptographically verifiable sources: Pyth signed updates, Sepolia RPC with block number).
+- Reads NEAR state via a JSON-RPC `query` (request_type `call_function`) over `wasi-http-client` — NOTE: the outlayer SDK has NO `near::rpc::view()` host fn (corrected after T3 verified docs.rs); only `storage`/`env`/`vrf` modules exist. Entrypoint is `fn main()` with stdin/stdout via `outlayer::env::input()/output()`. Fetches external facts via `wasi-http-client` (prefer cryptographically verifiable sources: Pyth Hermes signed updates, Sepolia RPC with block number).
 - Output ≤ ~900 bytes: `{ phase:"commit", commit_hash }` on first call; `{ phase:"reveal", report }` on reveal call. (Two-call flow; keep each under the yield/resume ~1KB payload limit.)
 - Deterministic: same inputs + same block → same report (so slashers can re-derive).
 

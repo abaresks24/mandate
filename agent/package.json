@@ -1,0 +1,26 @@
+{
+  "name": "mandate-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "MANDATE off-chain Agent service: brief->mandate via NEAR AI Cloud, deterministic risk scoring, Agent Market provider, templated action proposer.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "tsx src/server.ts",
+    "start": "node dist/server.js",
+    "build": "tsc -p tsconfig.json",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "near-api-js": "^5.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0",
+    "vitest": "^2.1.0"
+  }
+}
