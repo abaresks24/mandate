@@ -75,6 +75,42 @@ pub struct Tally {
     pub threshold_met: bool,
 }
 
+/// Committee-attested facts, aggregated across the revealed reports, that a
+/// vault applies to its mandate rules at execution time. This is the integration
+/// bridge: `tally` alone returns only the approval count, but the vault must also
+/// see the facts the committee observed (slippage, protocol-paused, price) to
+/// enforce DEPEG / SLIPPAGE_HIGH / PROTOCOL_PAUSED. `tally_facts` returns both.
+///
+/// Aggregation is CONSERVATIVE (fail-closed): across all revealed reports we take
+/// the worst observed value — max slippage, OR of protocol_paused, and the price
+/// furthest from $1.00 — so a single honest guardian reporting danger blocks the
+/// action even if others under-report.
+#[derive(
+    BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, Debug, PartialEq, Default,
+)]
+#[borsh(crate = "near_sdk::borsh")]
+#[serde(crate = "near_sdk::serde")]
+pub struct TallyFacts {
+    /// Max observed slippage (bps) across revealed reports.
+    pub observed_slippage_bps: u32,
+    /// True if ANY revealed report says the protocol is paused.
+    pub protocol_paused: bool,
+    /// Price (6-dp) furthest from $1.00 across revealed reports, if any present.
+    pub price_usdc: Option<u64>,
+}
+
+/// `tally` + aggregated committee facts, returned by `tally_facts`. The vault's
+/// `on_tally` callback deserializes this and feeds it to its mandate gate.
+#[derive(
+    BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, Debug, PartialEq, Default,
+)]
+#[borsh(crate = "near_sdk::borsh")]
+#[serde(crate = "near_sdk::serde")]
+pub struct TallyWithFacts {
+    pub tally: Tally,
+    pub facts: TallyFacts,
+}
+
 /// The fault categories a challenge can assert. Per SPEC.
 ///
 /// - `Equivocation` and `Unavailability` are FULLY on-chain decidable from

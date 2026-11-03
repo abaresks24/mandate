@@ -4,6 +4,7 @@ members = [
     "contracts/coordinator",
     "contracts/vault",
     "guardian",
+    "integration",
 ]
 
 [workspace.package]

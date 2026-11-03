@@ -1,0 +1,15 @@
+# Build the NEAR contracts with the real on-chain host functions.
+#
+# near-sdk 5.30 gates its real host-function bindings (env::panic_str,
+# env::random_seed, etc.) behind `#[cfg(near)]`, which `cargo near build` sets.
+# Building a wasm with plain `cargo build` WITHOUT this cfg silently selects the
+# "pure-Rust fallback" shims instead, where panics compile to a wasm
+# `unreachable` trap rather than a clean host panic — so `require!` messages and
+# `#[handle_result]` errors vanish into "WebAssembly trap" on a real node.
+#
+# Setting `--cfg near` for the wasm target makes a plain
+# `cargo build --target wasm32-unknown-unknown --release` produce a deployable,
+# correctly-panicking contract wasm (verified against a near-workspaces sandbox),
+# so the integration tests run without requiring cargo-near to be installed.
+[target.wasm32-unknown-unknown]
+rustflags = ["--cfg", "near"]

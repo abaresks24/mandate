@@ -8,7 +8,10 @@
 //!      equal the stored commit — binding the reveal to the earlier commit.
 //!   3. `tally` counts `approve == true` reveals; `threshold_met` at 2-of-3.
 
-use crate::{ActionId, Coordinator, CoordinatorExt, GuardianId, Tally, APPROVE_THRESHOLD};
+use crate::{
+    ActionId, Coordinator, CoordinatorExt, GuardianId, Tally, TallyFacts, TallyWithFacts,
+    APPROVE_THRESHOLD,
+};
 use near_sdk::json_types::Base64VecU8;
 use near_sdk::{env, near, require};
 
@@ -101,6 +104,66 @@ impl Coordinator {
         Tally {
             approvals,
             threshold_met: approvals >= APPROVE_THRESHOLD,
+        }
+    }
+
+    /// `tally` plus the committee's aggregated attested facts. This is the method
+    /// the vault's `execute_action` cross-contract-calls: it needs both the
+    /// approval threshold AND the facts to run its mandate gate (slippage, depeg,
+    /// protocol-paused). Facts are aggregated conservatively (worst-case) across
+    /// all revealed reports (see `TallyFacts`).
+    pub fn tally_facts(&self, action_id: ActionId) -> TallyWithFacts {
+        let rec = self.expect_action(&action_id);
+        let approvals = rec
+            .slots
+            .iter()
+            .filter(|s| s.approve == Some(true))
+            .count() as u8;
+
+        let mut facts = TallyFacts::default();
+        for slot in rec.slots.iter() {
+            let Some(report) = slot.report_json.as_ref() else {
+                continue;
+            };
+            if let Ok(v) =
+                near_sdk::serde_json::from_str::<near_sdk::serde_json::Value>(report)
+            {
+                // facts can be nested under "facts" (SPEC GuardianReport) or flat.
+                let f = v.get("facts").unwrap_or(&v);
+                if let Some(s) = f.get("observed_slippage_bps").and_then(|x| x.as_u64()) {
+                    facts.observed_slippage_bps = facts.observed_slippage_bps.max(s as u32);
+                }
+                if let Some(p) = f.get("protocol_paused").and_then(|x| x.as_bool()) {
+                    facts.protocol_paused = facts.protocol_paused || p;
+                }
+                // price may be a 6-dp int or a decimal string.
+                let price = f.get("price_usdc").and_then(|p| {
+                    p.as_u64()
+                        .or_else(|| p.as_str().and_then(|s| s.parse::<u64>().ok()))
+                });
+                if let Some(price) = price {
+                    // keep the price furthest from $1.00 (worst-case for depeg).
+                    const PAR: u64 = 1_000_000;
+                    facts.price_usdc = Some(match facts.price_usdc {
+                        None => price,
+                        Some(cur) => {
+                            if price.abs_diff(PAR) > cur.abs_diff(PAR) {
+                                price
+                            } else {
+                                cur
+                            }
+                        }
+                    });
+                }
+            }
+        }
+
+        TallyWithFacts {
+            tally: Tally {
+                approvals,
+                threshold_met: approvals >= APPROVE_THRESHOLD,
+            },
+            facts,
         }
     }
 }

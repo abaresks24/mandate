@@ -13,18 +13,16 @@
 //!      (slippage, protocol-paused, price) to the mandate rules before executing.
 
 mod evm;
-// The external-contract traits are the Phase-2 integration interface (cross-contract
-// calls wired then); they are intentionally defined ahead of use.
-#[allow(dead_code)]
 mod external;
 mod types;
 
-pub use external::{SignRequest, Tally};
+pub use external::{SignRequest, Tally, TallyFacts, TallyWithFacts};
 pub use types::*;
 
+use external::{ext_coordinator, ext_mpc_signer};
 use near_sdk::json_types::U128;
 use near_sdk::store::{LookupMap, Vector};
-use near_sdk::{env, near, require, AccountId, PanicOnDefault, PublicKey};
+use near_sdk::{env, near, require, AccountId, Gas, PanicOnDefault, Promise, PublicKey};
 
 /// Rolling daily cap window, in nanoseconds (24h).
 const DAY_NANOS: u64 = 24 * 60 * 60 * 1_000_000_000;
@@ -32,6 +30,18 @@ const DAY_NANOS: u64 = 24 * 60 * 60 * 1_000_000_000;
 /// A healthy stablecoin price band, 6-dp. Outside this => DEPEG, refuse allocate.
 const USDC_PRICE_FLOOR: u64 = 995_000; // $0.995
 const USDC_PRICE_CEIL: u64 = 1_005_000; // $1.005
+
+/// Gas reserved for the `coordinator.tally_facts` cross-contract call.
+const GAS_TALLY: Gas = Gas::from_tgas(10);
+/// Gas reserved for the `on_tally` callback (it mutates vault state + logs).
+const GAS_ON_TALLY: Gas = Gas::from_tgas(30);
+/// Gas reserved for the `coordinator.draw_committee` cross-contract call.
+const GAS_DRAW: Gas = Gas::from_tgas(20);
+/// MPC signer account (Chain Signatures) — `v1.signer-prod.testnet` per SPEC.
+/// Integration point for the cross-chain execute path.
+const MPC_SIGNER: &str = "v1.signer-prod.testnet";
+/// Gas attached to the MPC `sign` request.
+const GAS_SIGN: Gas = Gas::from_tgas(50);
 
 pub type ActionId = String;
 
@@ -60,6 +70,12 @@ pub struct Vault {
     /// Rolling daily-cap accounting.
     day_window_start: u64,
     day_spent_usdc: u128,
+
+    /// The most recent Chain Signatures `SignRequest` the vault built for a
+    /// cross-chain allocate. Recorded so tests (and the UI) can assert the vault
+    /// builds the CORRECT MPC payload without a live signer. `None` until the
+    /// first AllocateCrossChain executes.
+    last_sign_request: Option<SignRequest>,
 }
 
 #[near]
@@ -87,6 +103,7 @@ impl Vault {
             idle_usdc: 0,
             day_window_start: env::block_timestamp(),
             day_spent_usdc: 0,
+            last_sign_request: None,
         };
         // Seed idle balance explicitly via deposit flows in integration; start empty.
         let _ = &mut v.idle_usdc;
@@ -175,6 +192,36 @@ impl Vault {
     }
 
     // -------------------------------------------------------------------------
+    // 2b. request_committee — ask the coordinator to draw a bonded committee.
+    // -------------------------------------------------------------------------
+
+    /// Ask the coordinator to draw a bonded committee for a proposed action. This
+    /// is the REAL cross-contract wiring of the draw step: the vault calls
+    /// `coordinator.draw_committee(vault_id, action_id, action_value_usdc)`. The
+    /// coordinator enforces the quorum-bond>value invariant and may reject the
+    /// draw (`QuorumBondTooLow`/`NotEnoughGuardians`), surfaced back as a failed
+    /// promise. Only callable once the action passed the deterministic gate (so a
+    /// committee is NEVER drawn for an out-of-mandate proposal).
+    ///
+    /// Callable by owner or agent.
+    pub fn request_committee(&mut self, action_id: ActionId) -> Promise {
+        self.assert_owner_or_agent();
+        let state = self
+            .actions
+            .get(&action_id)
+            .cloned()
+            .expect("unknown action_id");
+        require!(
+            state.status == ActionStatus::Proposed,
+            "action is not in Proposed state"
+        );
+        let value = U128(state.template.amount_usdc());
+        ext_coordinator::ext(self.coordinator.clone())
+            .with_static_gas(GAS_DRAW)
+            .draw_committee(env::current_account_id(), action_id, value)
+    }
+
+    // -------------------------------------------------------------------------
     // 3. execute_action — after committee tally; apply FACTS then execute.
     // -------------------------------------------------------------------------
 
@@ -192,8 +239,73 @@ impl Vault {
     ///
     /// Callable by owner or agent (either may drive execution once the committee
     /// has attested).
-    pub fn execute_action(&mut self, action_id: ActionId, tally: Tally, facts: GuardianFacts) {
+    ///
+    /// REAL cross-contract flow: this cross-contract-calls
+    /// `coordinator.tally_facts(action_id)` and chains `Self::on_tally(action_id)`
+    /// as a callback. The callback reads the returned `Tally` + aggregated
+    /// committee `facts`, applies them to the mandate rules (via the preserved
+    /// `execute_action_inner` gate), and only then executes. The injectable
+    /// `execute_action_inner(action_id, tally, facts)` is kept so unit tests can
+    /// drive the gate directly without a live coordinator.
+    pub fn execute_action(&mut self, action_id: ActionId) -> Promise {
         self.assert_owner_or_agent();
+        let state = self
+            .actions
+            .get(&action_id)
+            .cloned()
+            .expect("unknown action_id");
+        require!(
+            state.status == ActionStatus::Proposed,
+            "action is not in Proposed state"
+        );
+
+        ext_coordinator::ext(self.coordinator.clone())
+            .with_static_gas(GAS_TALLY)
+            .tally_facts(action_id.clone())
+            .then(
+                Self::ext(env::current_account_id())
+                    .with_static_gas(GAS_ON_TALLY)
+                    .on_tally(action_id),
+            )
+    }
+
+    /// Callback after `coordinator.tally_facts`. Private: only the vault calling
+    /// itself may invoke it (`#[private]` enforces `predecessor == current`). It
+    /// deserializes the coordinator's `TallyWithFacts` and feeds it to the
+    /// preserved mandate gate (`execute_action_inner`), so the apply-facts-then-
+    /// execute logic (and all its unit tests) is unchanged.
+    #[private]
+    #[handle_result]
+    pub fn on_tally(
+        &mut self,
+        action_id: ActionId,
+        #[callback_result] result: Result<TallyWithFacts, near_sdk::PromiseError>,
+    ) -> Result<(), String> {
+        let twf = result.map_err(|_| "coordinator.tally_facts call failed".to_string())?;
+        let tally = Tally {
+            approvals: twf.tally.approvals,
+            threshold_met: twf.tally.threshold_met,
+        };
+        let facts = GuardianFacts {
+            observed_slippage_bps: twf.facts.observed_slippage_bps,
+            protocol_paused: twf.facts.protocol_paused,
+            price_usdc: twf.facts.price_usdc,
+        };
+        self.execute_action_inner(action_id, tally, facts);
+        Ok(())
+    }
+
+    /// Injectable mandate gate + execution. Preserved as a plain inherent method
+    /// (NOT a `#[near]` entrypoint) so unit tests call it directly and the real
+    /// `on_tally` callback funnels into it. `require!(threshold_met)` here means a
+    /// 2-of-3 failure still aborts (the callback simply forwards whatever tally
+    /// the coordinator returned).
+    pub(crate) fn execute_action_inner(
+        &mut self,
+        action_id: ActionId,
+        tally: Tally,
+        facts: GuardianFacts,
+    ) {
         require!(tally.threshold_met, "coordinator tally: threshold not met");
 
         let mut state = self
@@ -282,15 +394,31 @@ impl Vault {
                 // Vault builds the EVM tx + requests a Chain Signatures signature.
                 let tx = evm::build_allocate_tx(market, *amount);
                 let payload = evm::signer_payload(&tx);
-                // Integration: ext_mpc_signer::sign on `v1.signer-prod.testnet`.
-                let _req = SignRequest {
-                    payload,
+                let req = SignRequest {
+                    payload: payload.clone(),
                     path: "mandate-vault,eth".to_string(),
                     key_version: 0,
                 };
+                // REAL integration point: fire a cross-contract `sign` request to
+                // the MPC signer (`v1.signer-prod.testnet`). In the sandbox there
+                // is no live signer, so this promise targets an account that may
+                // not exist; the TEST asserts the SignRequest payload is correct
+                // (see `last_sign_request`) rather than a live signature. We fire
+                // the promise only when a signer account is resolvable to keep the
+                // sandbox path from hard-failing: guarded behind `cfg(not(test))`
+                // so unit tests stay pure, but the payload is always recorded.
+                self.last_sign_request = Some(req.clone());
+                #[cfg(not(test))]
+                {
+                    if let Ok(signer) = MPC_SIGNER.parse::<AccountId>() {
+                        let _p = ext_mpc_signer::ext(signer)
+                            .with_static_gas(GAS_SIGN)
+                            .sign(req);
+                    }
+                }
                 format!(
-                    "AllocateCrossChain: built EVM tx to {} (chain {}) for {} USDC, signature requested via Chain Signatures",
-                    tx.to, tx.chain_id, amount.0
+                    "AllocateCrossChain: built EVM tx to {} (chain {}) for {} USDC, signature requested via Chain Signatures (payload {} bytes, path mandate-vault,eth)",
+                    tx.to, tx.chain_id, amount.0, payload.len()
                 )
             }
             ActionTemplate::WithdrawToUsdc { protocol } => {
@@ -397,6 +525,13 @@ impl Vault {
 
     pub fn view_mandate(&self) -> Mandate {
         self.mandate.clone()
+    }
+
+    /// The most recent Chain Signatures `SignRequest` the vault built (if any).
+    /// Lets the integration test assert the vault produced the correct MPC
+    /// payload for a cross-chain allocate WITHOUT a live signer.
+    pub fn view_last_sign_request(&self) -> Option<SignRequest> {
+        self.last_sign_request.clone()
     }
 
     // -------------------------------------------------------------------------

@@ -273,7 +273,7 @@ fn execute_supply_rhea_success() {
         amount: U128(1_000_000_000),
         market: "m".into(),
     });
-    v.execute_action(id.clone(), tally_ok(), facts_ok());
+    v.execute_action_inner(id.clone(), tally_ok(), facts_ok());
     let st = v.view_action(id).unwrap();
     assert_eq!(st.status, ActionStatus::Executed);
     // Position ledger reflects the supply.
@@ -293,7 +293,7 @@ fn execute_crosschain_requests_signature() {
         amount: U128(1_000_000_000),
         max_slippage_bps: 50,
     });
-    v.execute_action(id.clone(), tally_ok(), facts_ok());
+    v.execute_action_inner(id.clone(), tally_ok(), facts_ok());
     let st = v.view_action(id).unwrap();
     assert_eq!(st.status, ActionStatus::Executed);
     assert!(st.note.unwrap().contains("Chain Signatures"));
@@ -313,7 +313,7 @@ fn execute_blocked_without_threshold() {
         approvals: 1,
         threshold_met: false,
     };
-    v.execute_action(id, no, facts_ok());
+    v.execute_action_inner(id, no, facts_ok());
 }
 
 #[test]
@@ -332,7 +332,7 @@ fn execute_rejects_on_high_slippage_fact() {
         protocol_paused: false,
         price_usdc: Some(1_000_000),
     };
-    v.execute_action(id.clone(), tally_ok(), bad_facts);
+    v.execute_action_inner(id.clone(), tally_ok(), bad_facts);
     let st = v.view_action(id).unwrap();
     assert_eq!(st.status, ActionStatus::Rejected);
     assert!(st.note.unwrap().contains("SLIPPAGE_HIGH"));
@@ -354,7 +354,7 @@ fn execute_rejects_on_protocol_paused_fact() {
         protocol_paused: true,
         price_usdc: None,
     };
-    v.execute_action(id.clone(), tally_ok(), paused);
+    v.execute_action_inner(id.clone(), tally_ok(), paused);
     assert_eq!(v.view_action(id).unwrap().status, ActionStatus::Rejected);
 }
 
@@ -374,7 +374,7 @@ fn execute_rejects_on_depeg_fact() {
         protocol_paused: false,
         price_usdc: Some(930_000), // $0.93 -> depeg
     };
-    v.execute_action(id.clone(), tally_ok(), depeg);
+    v.execute_action_inner(id.clone(), tally_ok(), depeg);
     let st = v.view_action(id).unwrap();
     assert_eq!(st.status, ActionStatus::Rejected);
     assert!(st.note.unwrap().contains("DEPEG"));
@@ -407,7 +407,7 @@ fn emergency_exit_withdraw_allowed() {
         market: "m".into(),
     });
     v.test_seed_idle(1_000_000_000);
-    v.execute_action(id, tally_ok(), facts_ok());
+    v.execute_action_inner(id, tally_ok(), facts_ok());
     // Now emergency withdraw.
     let eid = v.emergency_exit(ActionTemplate::WithdrawToUsdc {
         protocol: "rhea".into(),
@@ -450,7 +450,7 @@ fn kill_switch_by_owner_ok() {
         amount: U128(1_000_000_000),
         market: "m".into(),
     });
-    v.execute_action(id, tally_ok(), facts_ok());
+    v.execute_action_inner(id, tally_ok(), facts_ok());
     assert_eq!(v.view_positions().positions.len(), 1);
 
     testing_env!(ctx_owner().build());
@@ -496,12 +496,18 @@ fn view_action_unknown_is_none() {
 }
 
 #[test]
-fn execute_unknown_owner_or_agent_gate() {
-    testing_env!(ctx_stranger().build());
+#[should_panic(expected = "caller is neither owner nor agent")]
+fn execute_action_rejects_stranger() {
+    // The PUBLIC wired execute_action asserts owner-or-agent BEFORE any
+    // cross-contract call, so a stranger is rejected without touching the
+    // coordinator. (A proposed action must exist first so we reach the gate.)
+    testing_env!(ctx_agent().build());
     let mut v = new_vault();
-    // stranger cannot execute even with a valid-looking tally.
-    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-        v.execute_action("a1".into(), tally_ok(), facts_ok());
-    }));
-    assert!(r.is_err());
+    let id = v.propose_action(ActionTemplate::SupplyRhea {
+        token: "usdc".into(),
+        amount: U128(1_000_000),
+        market: "m".into(),
+    });
+    testing_env!(ctx_stranger().build());
+    v.execute_action(id);
 }
