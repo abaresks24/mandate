@@ -261,6 +261,11 @@ impl Coordinator {
         self.guardians.get(&guardian_id).cloned()
     }
 
+    /// Read the committee drawn for an action (the 3 guardians, in draw order).
+    pub fn view_committee(&self, action_id: ActionId) -> Option<Vec<GuardianId>> {
+        self.actions.get(&action_id).map(|r| r.committee.clone())
+    }
+
     // ------------------------------------------------------------------
     // 2. Committee draw.
     // ------------------------------------------------------------------
