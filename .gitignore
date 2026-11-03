@@ -1,0 +1,13 @@
+/target
+**/target
+node_modules
+.next
+dist
+out
+*.wasm
+.env
+.env.local
+.DS_Store
+.pnp.*
+res/
+neardev/
