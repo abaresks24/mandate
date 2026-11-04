@@ -8,6 +8,7 @@ const LINKS = [
   { href: "/", label: "Overview" },
   { href: "/brief", label: "Brief → Proposal" },
   { href: "/vault", label: "Vault" },
+  { href: "/guardians", label: "Guardians" },
   { href: "/committee", label: "Committee" },
   { href: "/contrast", label: "The Contrast" },
   { href: "/slashing", label: "Slashing" },

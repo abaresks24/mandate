@@ -12,16 +12,16 @@ const CARDS = [
   {
     href: "/vault",
     title: "Vault",
-    body: "Positions, mandate rules, and the owner-only kill switch that repatriates everything.",
+    body: "Live mandate rules + positions from the deployed contract, and the owner-only kill switch that repatriates everything.",
     tone: "near" as const,
-    tag: "vault contract",
+    tag: "vault · live",
   },
   {
-    href: "/committee",
-    title: "Committee (hero)",
-    body: "A cross-chain action: 3 randomly-drawn bonded guardians, commit hashes → revealed reports with facts + reason codes → 2-of-3 tally.",
-    tone: "evm" as const,
-    tag: "coordinator",
+    href: "/guardians",
+    title: "Guardians",
+    body: "The live bonded TEE guardian set (g1…g7). g7 is slashed with a zero bond — read straight off the coordinator.",
+    tone: "near" as const,
+    tag: "coordinator · live",
   },
   {
     href: "/contrast",
@@ -33,9 +33,9 @@ const CARDS = [
   {
     href: "/slashing",
     title: "Slashing",
-    body: "A corrupt guardian lies about a price. The honest two refuse, the action is blocked, a fault proof is submitted → bond slashed → challenger rewarded.",
+    body: "Corrupt g7 approves a bad action alone off a fake feed. Honest guardians refuse, a2 blocks at 1/3, g7's bond is slashed → challenger rewarded.",
     tone: "danger" as const,
-    tag: "security",
+    tag: "security · live",
   },
 ];
 
@@ -58,6 +58,57 @@ export default function Home() {
           get slashed.
         </p>
       </section>
+
+      {/* Committee hero — the visual centerpiece */}
+      <Link href="/committee" className="block group">
+        <Card className="animate-rise border-evm/40 bg-gradient-to-br from-evm/10 to-near/5 hover:border-evm/60 transition cursor-pointer">
+          <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+            <Badge tone="evm">the hero screen · coordinator</Badge>
+            <span className="text-xs text-evm group-hover:underline">
+              Open the committee lifecycle →
+            </span>
+          </div>
+          <h2 className="text-2xl font-bold text-white">
+            The committee lands 2-of-3 — live on testnet
+          </h2>
+          <p className="text-slate-400 mt-2 max-w-3xl">
+            A cross-chain action draws 3 bond-weighted guardians. They{" "}
+            <span className="text-white">commit</span> hashes, then{" "}
+            <span className="text-white">reveal</span> signed reports —{" "}
+            <span className="font-mono text-near">sha256(report)==commit</span>{" "}
+            recomputed in your browser. Action <span className="font-mono">a1</span>{" "}
+            clears 3/3; action <span className="font-mono">a2</span> stalls at
+            1/3 and is{" "}
+            <span className="text-danger font-semibold">BLOCKED</span>.
+          </p>
+          <div className="flex gap-6 mt-4">
+            <div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">
+                a1 · clean path
+              </div>
+              <div className="text-lg font-semibold text-ok mt-0.5">
+                3 / 3 · threshold met
+              </div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">
+                a2 · attack
+              </div>
+              <div className="text-lg font-semibold text-danger mt-0.5">
+                1 / 3 · ⛔ blocked
+              </div>
+            </div>
+            <div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">
+                cross-chain
+              </div>
+              <div className="text-lg font-semibold text-evm mt-0.5">
+                Sepolia tx 0x1 ✓
+              </div>
+            </div>
+          </div>
+        </Card>
+      </Link>
 
       <section className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
         {CARDS.map((c) => (

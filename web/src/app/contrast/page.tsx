@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Badge, Card, Mono, SectionTitle, Stat } from "@/components/ui";
-import { MORPHO_ACTION, RHEA_ACTION } from "@/mock/actions";
-import { usdc } from "@/lib/format";
+import { CrossChainProof } from "@/components/CrossChainProof";
 
 export default function ContrastPage() {
   return (
@@ -24,12 +23,15 @@ export default function ContrastPage() {
             source of truth. No committee, no bond, no guardians drawn.
           </p>
           <div className="grid grid-cols-2 gap-3 mt-4">
-            <Stat label="action" value={<Mono>{RHEA_ACTION.action_id}</Mono>} />
-            <Stat label="value" value={usdc(RHEA_ACTION.value_usdc)} />
+            <Stat label="chain" value={<Mono>near</Mono>} />
             <Stat label="committee" value={<span className="text-slate-500">none</span>} />
-            <Stat label="phase" value={<Badge tone="ok">executed</Badge>} />
+            <Stat label="verifier" value="contract-alone" />
+            <Stat label="phase" value={<Badge tone="ok">executes in-tx</Badge>} />
           </div>
-          <p className="text-xs text-slate-500 mt-4">{RHEA_ACTION.note}</p>
+          <p className="text-xs text-slate-500 mt-4">
+            Executed by the Vault contract directly — it reads Rhea/Ref state on
+            NEAR in the same transaction, so no external attestation is needed.
+          </p>
         </Card>
 
         {/* Morpho / Sepolia */}
@@ -48,17 +50,10 @@ export default function ContrastPage() {
             pooled bond exceeds the action value, acting as insurance.
           </p>
           <div className="grid grid-cols-2 gap-3 mt-4">
-            <Stat label="action" value={<Mono>{MORPHO_ACTION.action_id}</Mono>} />
-            <Stat label="value" value={usdc(MORPHO_ACTION.value_usdc)} />
+            <Stat label="live action" value={<Mono>a1 · executed 3/3</Mono>} />
+            <Stat label="blocked action" value={<Mono>a2 · 1/3 blocked</Mono>} />
             <Stat label="committee" value="3 guardians · 2-of-3" />
-            <Stat
-              label="quorum bond"
-              value={
-                <span className="text-near">
-                  {MORPHO_ACTION.quorum_bond_near} Ⓝ
-                </span>
-              }
-            />
+            <Stat label="verifier" value="committee-required" />
           </div>
           <Link
             href="/committee"
@@ -68,6 +63,8 @@ export default function ContrastPage() {
           </Link>
         </Card>
       </div>
+
+      <CrossChainProof />
 
       <Card>
         <SectionTitle>Demo thesis table</SectionTitle>

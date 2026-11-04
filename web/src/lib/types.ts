@@ -79,6 +79,61 @@ export interface GuardianInfo {
   status: "active" | "unbonding" | "slashed";
 }
 
+// ---- LIVE on-chain shapes (verified against coordinator/vault views) ----
+// These mirror the EXACT JSON returned by the deployed testnet contracts.
+
+export type GuardianStatus = "Active" | "Unbonding" | "Slashed";
+
+// coordinator.view_guardian(guardian_id) -> GuardianLive
+export interface GuardianLive {
+  id: GuardianId;
+  account: string;
+  wasm_url: string;
+  wasm_sha256: string; // raw hex, no 0x prefix
+  bond: string; // yoctoNEAR u128 string
+  status: GuardianStatus;
+  last_drawn_vault: string | null;
+  unbond_ready_at: number | null;
+}
+
+// A guardian row enriched with its USDC-denominated bond (view_bond_usdc).
+export interface GuardianRow extends GuardianLive {
+  bond_usdc: string; // u128 string (6-dp USDC)
+}
+
+// coordinator.view_guardian_history(guardian_id)
+export interface GuardianHistory {
+  guardian_id: GuardianId;
+  info: GuardianLive;
+  draws: number;
+  reveals: number;
+  slashes: number;
+  total_slashed: string; // yoctoNEAR u128 string
+}
+
+// vault.view_action(action_id) -> ActionLive
+export interface ActionLive {
+  id: string;
+  template: ActionTemplate;
+  status: "Proposed" | "Committed" | "Revealed" | "Executed" | "Blocked";
+  note: string | null;
+}
+
+// vault.view_positions() -> PositionsLive
+export interface PositionsLive {
+  positions: Position[];
+  idle_usdc: string;
+  total_usdc: string;
+}
+
+// A fully-resolved committee for one action (ids + tally + guardian rows).
+export interface CommitteeLive {
+  action_id: string;
+  member_ids: GuardianId[];
+  members: GuardianRow[];
+  tally: Tally;
+}
+
 export interface CommitteeMember {
   guardian: GuardianInfo;
   commit_hash: string | null; // phase 1

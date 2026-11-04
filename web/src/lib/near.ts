@@ -10,10 +10,16 @@
 // signer (wired in Phase 2 integration).
 
 import type {
+  ActionLive,
   ActionState,
   ActionTemplate,
+  CommitteeLive,
+  GuardianHistory,
   GuardianInfo,
+  GuardianLive,
+  GuardianRow,
   Mandate,
+  PositionsLive,
   Position,
   Tally,
 } from "./types";
@@ -22,7 +28,7 @@ import { MANDATE, POSITIONS } from "@/mock/mandate";
 import { MORPHO_ACTION, RHEA_ACTION } from "@/mock/actions";
 import { SLASHING_ACTION } from "@/mock/slashing";
 
-export const MOCK_MODE = process.env.NEXT_PUBLIC_MOCK !== "0";
+export const MOCK_MODE = process.env.NEXT_PUBLIC_MOCK === "1";
 
 export const NEAR_CONFIG = {
   network: process.env.NEXT_PUBLIC_NEAR_NETWORK ?? "testnet",
@@ -31,9 +37,25 @@ export const NEAR_CONFIG = {
       ? "https://rpc.mainnet.near.org"
       : "https://rpc.testnet.near.org",
   coordinatorId:
-    process.env.NEXT_PUBLIC_COORDINATOR_ID ?? "coordinator.mandate.testnet",
-  vaultId: process.env.NEXT_PUBLIC_VAULT_ID ?? "demo.vaults.mandate.testnet",
+    process.env.NEXT_PUBLIC_COORDINATOR_ID ??
+    "coordinator.mandate-arthur.testnet",
+  vaultId:
+    process.env.NEXT_PUBLIC_VAULT_ID ?? "demo.vaults.mandate-arthur.testnet",
 };
+
+// Cross-chain landing proof — real MPC-derived EVM address + mined Sepolia tx.
+export const CROSSCHAIN = {
+  mpcAddress: "0x3919100A2079A5447F2514BaF6ABc81e15D179D7",
+  sepoliaTx:
+    "0x363165ff6c712577cd408a658e9e9f4b137ba8d39e03d773af5c71e9ffec4b0a",
+  sepoliaStatus: "0x1",
+  chainId: 11155111,
+  etherscan:
+    "https://sepolia.etherscan.io/tx/0x363165ff6c712577cd408a658e9e9f4b137ba8d39e03d773af5c71e9ffec4b0a",
+};
+
+// The seven registered guardian ids on the live coordinator.
+export const GUARDIAN_IDS = ["g1", "g2", "g3", "g4", "g5", "g6", "g7"];
 
 const ALL_ACTIONS: ActionState[] = [RHEA_ACTION, MORPHO_ACTION, SLASHING_ACTION];
 
@@ -41,6 +63,16 @@ const ALL_ACTIONS: ActionState[] = [RHEA_ACTION, MORPHO_ACTION, SLASHING_ACTION]
 async function provider() {
   const { providers } = await import("near-api-js");
   return new providers.JsonRpcProvider({ url: NEAR_CONFIG.nodeUrl });
+}
+
+// Browser-safe base64 of a UTF-8 string (no Node Buffer dependency).
+function toBase64(s: string): string {
+  const bytes = new TextEncoder().encode(s);
+  let bin = "";
+  for (let i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+  if (typeof btoa !== "undefined") return btoa(bin);
+  // Node fallback (SSR / build-time); harmless if Buffer exists.
+  return Buffer.from(s, "utf-8").toString("base64");
 }
 
 async function viewCall<T>(
@@ -53,11 +85,87 @@ async function viewCall<T>(
     request_type: "call_function",
     account_id: contractId,
     method_name: method,
-    args_base64: Buffer.from(JSON.stringify(args)).toString("base64"),
+    args_base64: toBase64(JSON.stringify(args)),
     finality: "optimistic",
   })) as unknown as { result: number[] };
-  return JSON.parse(Buffer.from(res.result).toString()) as T;
+  // res.result is a byte array; decode as UTF-8 without Buffer.
+  const json = new TextDecoder().decode(Uint8Array.from(res.result));
+  return JSON.parse(json) as T;
 }
+
+// --------------------------------------------------------------------------
+// LIVE read-only data layer (no wallet). Each fn hits the deployed testnet
+// contracts and returns the EXACT on-chain shape. Callers decide fallback.
+// --------------------------------------------------------------------------
+
+export const live = {
+  async guardian(id: string): Promise<GuardianLive> {
+    return viewCall<GuardianLive>(NEAR_CONFIG.coordinatorId, "view_guardian", {
+      guardian_id: id,
+    });
+  },
+
+  async bondUsdc(id: string): Promise<string> {
+    return viewCall<string>(NEAR_CONFIG.coordinatorId, "view_bond_usdc", {
+      guardian_id: id,
+    });
+  },
+
+  async guardianRow(id: string): Promise<GuardianRow> {
+    const [g, bond_usdc] = await Promise.all([
+      this.guardian(id),
+      this.bondUsdc(id).catch(() => "0"),
+    ]);
+    return { ...g, bond_usdc };
+  },
+
+  async guardianHistory(id: string): Promise<GuardianHistory> {
+    return viewCall<GuardianHistory>(
+      NEAR_CONFIG.coordinatorId,
+      "view_guardian_history",
+      { guardian_id: id }
+    );
+  },
+
+  async committee(action_id: string): Promise<string[]> {
+    return viewCall<string[]>(NEAR_CONFIG.coordinatorId, "view_committee", {
+      action_id,
+    });
+  },
+
+  async tally(action_id: string): Promise<Tally> {
+    return viewCall<Tally>(NEAR_CONFIG.coordinatorId, "tally", { action_id });
+  },
+
+  async mandate(): Promise<Mandate> {
+    return viewCall<Mandate>(NEAR_CONFIG.vaultId, "view_mandate", {});
+  },
+
+  async positions(): Promise<PositionsLive> {
+    return viewCall<PositionsLive>(NEAR_CONFIG.vaultId, "view_positions", {});
+  },
+
+  async action(action_id: string): Promise<ActionLive> {
+    return viewCall<ActionLive>(NEAR_CONFIG.vaultId, "view_action", {
+      action_id,
+    });
+  },
+
+  // Resolve a full committee: ids -> guardian rows + tally, all in parallel.
+  async committeeLive(action_id: string): Promise<CommitteeLive> {
+    const member_ids = await this.committee(action_id);
+    const [members, tally] = await Promise.all([
+      Promise.all(member_ids.map((id) => this.guardianRow(id))),
+      this.tally(action_id),
+    ]);
+    return { action_id, member_ids, members, tally };
+  },
+
+  // All seven registered guardians with their USDC bonds, in parallel.
+  async allGuardians(): Promise<GuardianRow[]> {
+    return Promise.all(GUARDIAN_IDS.map((id) => this.guardianRow(id)));
+  },
+};
 
 // --------------------------------------------------------------------------
 // Coordinator contract — external interface (SPEC.md)

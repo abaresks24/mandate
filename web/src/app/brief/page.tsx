@@ -68,27 +68,47 @@ function OptionCard({ o }: { o: AllocationOption }) {
       </div>
       <p className="text-sm text-slate-400">{o.risk_explanation}</p>
       <div>
-        <div className="text-xs uppercase tracking-wide text-slate-500 mb-2">
-          deterministic risk factors (computed in TS, not by the LLM)
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs uppercase tracking-wide text-slate-500">
+            deterministic risk factors (computed in TS, not by the LLM)
+          </span>
+          <span className="text-[10px] text-slate-500">
+            <span className="text-danger">+ adds risk</span> ·{" "}
+            <span className="text-ok">− reduces risk</span>
+          </span>
         </div>
         <div className="flex flex-col gap-1">
-          {o.risk_factors.map((f) => (
-            <div
-              key={f.factor}
-              className="flex items-center justify-between text-xs border-b border-edge/60 py-1"
-            >
-              <span className="text-slate-300">{f.factor}</span>
-              <span className="text-slate-500 flex-1 px-3">{f.note}</span>
-              <span
-                className={
-                  f.weight >= 0 ? "text-danger font-mono" : "text-ok font-mono"
-                }
+          {o.risk_factors.map((f) => {
+            const adds = f.weight > 0;
+            const reduces = f.weight < 0;
+            return (
+              <div
+                key={f.factor}
+                className="flex items-center justify-between text-xs border-b border-edge/60 py-1"
               >
-                {f.weight >= 0 ? "+" : ""}
-                {f.weight}
-              </span>
-            </div>
-          ))}
+                <span className="text-slate-300">{f.factor}</span>
+                <span className="text-slate-500 flex-1 px-3">{f.note}</span>
+                <span
+                  className={`font-mono ${
+                    adds ? "text-danger" : reduces ? "text-ok" : "text-slate-400"
+                  }`}
+                  title={
+                    adds
+                      ? "increases risk score"
+                      : reduces
+                      ? "decreases risk score"
+                      : "neutral"
+                  }
+                >
+                  {adds ? `+${f.weight}` : f.weight}
+                  <span className="text-slate-600">
+                    {" "}
+                    {adds ? "risk" : reduces ? "risk" : ""}
+                  </span>
+                </span>
+              </div>
+            );
+          })}
         </div>
       </div>
       <div className="border-t border-edge pt-3">
