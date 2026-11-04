@@ -266,6 +266,22 @@ impl Coordinator {
         self.actions.get(&action_id).map(|r| r.committee.clone())
     }
 
+    /// Read a guardian's revealed report (plaintext) for an action, if revealed.
+    /// The commit hash that this report must match is in the slot; the UI can
+    /// recompute sha256 to show the commit-reveal binding is real.
+    pub fn view_report(&self, action_id: ActionId, guardian_id: GuardianId) -> Option<String> {
+        let rec = self.actions.get(&action_id)?;
+        let idx = rec.slot_index_pub(&guardian_id)?;
+        rec.slots[idx].report_json.clone()
+    }
+
+    /// Read a guardian's commit hash for an action (hex of sha256 of the report).
+    pub fn view_commit(&self, action_id: ActionId, guardian_id: GuardianId) -> Option<String> {
+        let rec = self.actions.get(&action_id)?;
+        let idx = rec.slot_index_pub(&guardian_id)?;
+        rec.slots[idx].commit_hash.clone()
+    }
+
     // ------------------------------------------------------------------
     // 2. Committee draw.
     // ------------------------------------------------------------------
