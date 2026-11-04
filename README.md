@@ -174,7 +174,9 @@ The full hero path was executed on real testnet, every step on-chain:
 | Slashing (corrupt guardian `g7` lies) | 2 honest refuse → tally **1/3 blocked** → `FalseAttestation` challenge → **g7 bond 3 NEAR slashed, challenger paid 1.6 NEAR** |
 | Kill switch | **repatriated 5 USDC to owner** |
 
-Remaining to finish the cross-chain leg end-to-end: broadcast the MPC-signed tx onto Ethereum Sepolia (needs Sepolia ETH at the MPC-derived address — faucet-gated).
+| **Cross-chain landing** | **MPC-signed tx mined on Ethereum Sepolia** (status `0x1`) from the committee-gated MPC address `0x3919100A2079A5447F2514BaF6ABc81e15D179D7` — tx `0x363165ff6c712577cd408a658e9e9f4b137ba8d39e03d773af5c71e9ffec4b0a` |
+
+The full NEAR → Chain Signatures → Ethereum Sepolia pipeline is proven end-to-end: a NEAR account, gated by a bonded randomly-drawn guardian committee, controls an address on another chain via MPC and makes it transact. (This landing tx is a self-send proving the pipeline; a *funded* Morpho supply additionally needs Sepolia USDC + a live market.)
 
 ## Live on NEAR testnet (deployed + verifiable)
 
