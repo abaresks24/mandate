@@ -25,8 +25,12 @@ export class NearAiClient implements LlmClient {
     private readonly apiKey: string,
     private readonly baseUrl: string = DEFAULT_BASE,
     private readonly fetchImpl: typeof fetch = fetch,
+    private readonly forcedModel?: string,
   ) {
-    if (!apiKey) throw new Error("NEAR_AI_API_KEY is required for NearAiClient");
+    if (!apiKey)
+      throw new Error(
+        "an LLM API key is required (set LLM_API_KEY or NEAR_AI_API_KEY)",
+      );
   }
 
   private headers(): Record<string, string> {
@@ -37,6 +41,7 @@ export class NearAiClient implements LlmClient {
   }
 
   async listModel(): Promise<string> {
+    if (this.forcedModel) return this.forcedModel;
     if (this.cachedModel) return this.cachedModel;
     const res = await this.fetchImpl(`${this.baseUrl}/models`, {
       method: "GET",

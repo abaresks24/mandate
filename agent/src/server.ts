@@ -46,10 +46,16 @@ function send(res: ServerResponse, status: number, obj: unknown): void {
   res.end(payload);
 }
 
-/** Start the server using the real NEAR AI Cloud client from env. */
+/**
+ * Start the server using an OpenAI-compatible LLM client from env.
+ * Defaults to NEAR AI Cloud; set LLM_BASE_URL / LLM_API_KEY / LLM_MODEL to use
+ * any OpenAI-compatible provider (e.g. Mistral: https://api.mistral.ai/v1).
+ */
 export function startServer(port = Number(process.env.PORT ?? 8787)) {
-  const apiKey = process.env.NEAR_AI_API_KEY ?? "";
-  const llm = new NearAiClient(apiKey);
+  const apiKey = process.env.LLM_API_KEY ?? process.env.NEAR_AI_API_KEY ?? "";
+  const baseUrl = process.env.LLM_BASE_URL || undefined;
+  const model = process.env.LLM_MODEL || undefined;
+  const llm = new NearAiClient(apiKey, baseUrl, undefined, model);
   const handler = buildHandler((brief) => briefToMandate(brief, { llm }));
   const server = createServer((req, res) => {
     handler(req, res).catch((err) => {
