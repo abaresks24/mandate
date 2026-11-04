@@ -21,19 +21,25 @@ import {
   usdc,
   yoctoToNear,
 } from "@/lib/format";
-import { live } from "@/lib/near";
+import { live, MOCK_MODE } from "@/lib/near";
 import { useLive } from "@/lib/useLive";
 import { REPORTS_BY_ACTION } from "@/mock/reports";
 import type { CommitteeLive } from "@/lib/types";
 
 type Phase = "draw" | "commit" | "reveal";
 
-// A committee member resolved for the demo: live guardian row + its (TEE)
-// report, with a commit hash computed as sha256(canonicalJson(report)).
+// A committee member resolved for the demo: live guardian row + its revealed
+// report. `commitLive` is the on-chain stored commit (view_commit); `commitHash`
+// is sha256(reportString) recomputed in-browser over the EXACT bytes returned by
+// view_report. `commitMatches` proves the commit-reveal binding against the chain.
 interface ResolvedMember {
   row: GuardianRow;
   report: GuardianReport | null;
-  commitHash: string | null;
+  reportString: string | null; // raw bytes the commit was computed over
+  commitHash: string | null; // recomputed sha256(reportString)
+  commitLive: string | null; // on-chain view_commit value
+  commitMatches: boolean | null;
+  source: "live" | "mock";
 }
 
 function GuardianCard({
@@ -76,10 +82,15 @@ function GuardianCard({
 
       {phase !== "draw" && (
         <div>
-          <div className="text-xs uppercase tracking-wide text-slate-500 mb-1">
-            commit hash (phase 1)
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-xs uppercase tracking-wide text-slate-500">
+              commit hash (phase 1)
+            </span>
+            {m.source === "live" && m.commitLive && (
+              <Badge tone="near">on-chain</Badge>
+            )}
           </div>
-          <Mono>{shortHash(m.commitHash, 18, 10)}</Mono>
+          <Mono>{shortHash(m.commitLive ?? m.commitHash, 18, 10)}</Mono>
         </div>
       )}
 
@@ -100,10 +111,17 @@ function GuardianCard({
           <ReasonCodeBadges codes={m.report.reason_codes} />
           <div className="grid grid-cols-2 gap-2 text-xs">
             <Stat label="price usdc" value={price6(m.report.facts.price_usdc)} />
-            <Stat label="read block" value={m.report.facts.price_block} />
+            <Stat
+              label="read block"
+              value={m.report.facts.price_block ?? "—"}
+            />
             <Stat
               label="slippage"
-              value={`${m.report.facts.observed_slippage_bps} bps`}
+              value={
+                m.report.facts.observed_slippage_bps != null
+                  ? `${m.report.facts.observed_slippage_bps} bps`
+                  : "—"
+              }
             />
             <Stat
               label="paused"
@@ -124,10 +142,24 @@ function GuardianCard({
               </div>
             ))}
           </div>
-          <div className="text-xs mt-1 text-ok">
-            ✓ sha256(report) == commit
-            <span className="text-slate-600"> · recomputed in-browser</span>
-          </div>
+          {m.commitMatches ? (
+            <div className="text-xs mt-1 text-ok">
+              ✓ sha256(report) == {m.source === "live" ? "view_commit" : "commit"}
+              <span className="text-slate-600">
+                {" "}
+                · recomputed in-browser
+                {m.source === "live" ? " vs on-chain" : ""}
+              </span>
+            </div>
+          ) : m.commitMatches === false ? (
+            <div className="text-xs mt-1 text-danger">
+              ✗ sha256(report) != view_commit · binding broken
+            </div>
+          ) : (
+            <div className="text-xs mt-1 text-slate-600">
+              commit binding unavailable
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -225,18 +257,60 @@ export function CommitteeView({
 
   const committee = state.data ?? mockCommittee;
 
-  // Resolve members with their reports + runtime-computed commit hashes.
+  // Resolve each drawn guardian's report + commit binding. In live mode we hit
+  // view_report / view_commit on the coordinator, parse the EXACT report string,
+  // recompute sha256 over its raw bytes (NOT a re-serialization), and compare it
+  // to the on-chain commit. On MOCK_MODE or any call failure we fall back to the
+  // mock report payload and hash sha256(canonicalJson(report)).
   const [resolved, setResolved] = useState<ResolvedMember[]>([]);
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const out = await Promise.all(
-        committee.members.map(async (row) => {
-          const report = reports[row.id] ?? null;
-          const commitHash = report
-            ? "0x" + (await sha256Hex(canonicalJson(report)))
-            : null;
-          return { row, report, commitHash };
+        committee.members.map(async (row): Promise<ResolvedMember> => {
+          // Mock fallback payload for this guardian.
+          const mockReport = reports[row.id] ?? null;
+          const mockResolved = async (): Promise<ResolvedMember> => {
+            const commitHash = mockReport
+              ? await sha256Hex(canonicalJson(mockReport))
+              : null;
+            return {
+              row,
+              report: mockReport,
+              reportString: mockReport ? canonicalJson(mockReport) : null,
+              commitHash,
+              commitLive: commitHash,
+              commitMatches: mockReport ? true : null,
+              source: "mock",
+            };
+          };
+
+          if (MOCK_MODE) return mockResolved();
+
+          try {
+            const [reportString, commitLive] = await Promise.all([
+              live.report(actionId, row.id),
+              live.commit(actionId, row.id).catch(() => null),
+            ]);
+            if (reportString == null) return mockResolved();
+
+            // Hash the EXACT bytes the on-chain commit was computed over.
+            const commitHash = await sha256Hex(reportString);
+            const report = JSON.parse(reportString) as GuardianReport;
+            const commitMatches =
+              commitLive != null ? commitHash === commitLive : null;
+            return {
+              row,
+              report,
+              reportString,
+              commitHash,
+              commitLive,
+              commitMatches,
+              source: "live",
+            };
+          } catch {
+            return mockResolved();
+          }
         })
       );
       if (!cancelled) setResolved(out);
@@ -245,7 +319,7 @@ export function CommitteeView({
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [committee]);
+  }, [committee, actionId]);
 
   const tally = committee.tally;
   const thresholdMet = tally.threshold_met;

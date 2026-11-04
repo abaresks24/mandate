@@ -41,8 +41,8 @@ export type ReasonCode =
 
 export interface GuardianFacts {
   price_usdc: string; // 6-dp fixed
-  price_block: number;
-  observed_slippage_bps: number;
+  price_block?: number; // omitted by some live reports
+  observed_slippage_bps?: number; // omitted by some live reports
   protocol_paused: boolean;
 }
 

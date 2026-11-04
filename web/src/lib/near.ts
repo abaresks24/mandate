@@ -151,6 +151,25 @@ export const live = {
     });
   },
 
+  // Guardian's revealed report payload (plaintext JSON string) for an action.
+  // view_report returns Option<String>; near-api-js decodes it as a JSON string
+  // (or null when not revealed). We return the EXACT inner string so callers can
+  // hash the raw bytes the on-chain commit was computed over.
+  async report(action_id: string, guardian_id: string): Promise<string | null> {
+    return viewCall<string | null>(NEAR_CONFIG.coordinatorId, "view_report", {
+      action_id,
+      guardian_id,
+    });
+  },
+
+  // The stored commit hash (lowercase hex sha256 of the exact report string).
+  async commit(action_id: string, guardian_id: string): Promise<string | null> {
+    return viewCall<string | null>(NEAR_CONFIG.coordinatorId, "view_commit", {
+      action_id,
+      guardian_id,
+    });
+  },
+
   // Resolve a full committee: ids -> guardian rows + tally, all in parallel.
   async committeeLive(action_id: string): Promise<CommitteeLive> {
     const member_ids = await this.committee(action_id);
