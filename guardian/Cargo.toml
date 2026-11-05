@@ -28,9 +28,5 @@ hex = "0.4"
 outlayer = "0.2"
 wasi-http-client = "0.2"
 
-[profile.release]
-opt-level = "z"
-lto = true
-strip = true
-codegen-units = 1
-panic = "abort"
+# NOTE: release profile is defined once at the workspace root (Cargo.toml).
+# Member crates must not redeclare [profile] or Cargo warns and ignores it.

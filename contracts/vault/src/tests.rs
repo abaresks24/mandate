@@ -509,5 +509,5 @@ fn execute_action_rejects_stranger() {
         market: "m".into(),
     });
     testing_env!(ctx_stranger().build());
-    v.execute_action(id);
+    let _ = v.execute_action(id);
 }

@@ -36,6 +36,8 @@ const EIP1559_TX_TYPE: u8 = 0x02;
 const SELECTOR_SUPPLY: [u8; 4] = [0x61, 0x7b, 0xa0, 0x37]; // supply(address,uint256,address,uint16) family
 
 /// ERC-20 `approve(address spender, uint256 amount)` selector = 0x095ea7b3.
+/// Used by the approve leg of a real Morpho supply (wired in the integration path).
+#[allow(dead_code)]
 const SELECTOR_APPROVE: [u8; 4] = [0x09, 0x5e, 0xa7, 0xb3];
 
 /// A structured, ready-to-sign EVM call. Everything here is derived from the
@@ -113,6 +115,7 @@ fn encode_supply_calldata(market: &str, amount: u128) -> Vec<u8> {
 /// Build ERC-20 `approve(spender, amount)` calldata — the first leg of the
 /// supply flow (approve the Morpho market to pull USDC). Exposed for the
 /// integration path and the KAT tests.
+#[allow(dead_code)]
 pub fn encode_approve_calldata(spender: &str, amount: u128) -> Vec<u8> {
     let spender_addr = parse_address(spender);
     let mut out = Vec::with_capacity(4 + 32 * 2);

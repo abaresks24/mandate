@@ -19,6 +19,8 @@ mod types;
 pub use external::{SignRequest, Tally, TallyFacts, TallyWithFacts};
 pub use types::*;
 
+// `ext_mpc_signer` is only referenced by the real (non-test) cross-chain path.
+#[cfg_attr(test, allow(unused_imports))]
 use external::{ext_coordinator, ext_mpc_signer};
 use near_sdk::json_types::U128;
 use near_sdk::store::{LookupMap, Vector};
@@ -38,9 +40,11 @@ const GAS_ON_TALLY: Gas = Gas::from_tgas(30);
 /// Gas reserved for the `coordinator.draw_committee` cross-contract call.
 const GAS_DRAW: Gas = Gas::from_tgas(20);
 /// MPC signer account (Chain Signatures) — `v1.signer-prod.testnet` per SPEC.
-/// Integration point for the cross-chain execute path.
+/// Integration point for the cross-chain execute path (non-test builds only).
+#[cfg_attr(test, allow(dead_code))]
 const MPC_SIGNER: &str = "v1.signer-prod.testnet";
 /// Gas attached to the MPC `sign` request.
+#[cfg_attr(test, allow(dead_code))]
 const GAS_SIGN: Gas = Gas::from_tgas(50);
 
 pub type ActionId = String;
