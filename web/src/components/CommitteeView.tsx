@@ -1,17 +1,31 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { AnimatePresence, useReducedMotion } from "framer-motion";
+import {
+  ArrowRight,
+  ArrowLeft,
+  Ban,
+  CheckCircle2,
+  Hash,
+  ShieldCheck,
+  ShieldX,
+  Fingerprint,
+  Dices,
+} from "lucide-react";
 import { GuardianReport, GuardianRow, Tally } from "@/lib/types";
 import {
   Badge,
   Button,
   Card,
+  Copyable,
   ErrorBanner,
   LiveIndicator,
-  Mono,
   Skeleton,
   Stat,
+  StatusBadge,
 } from "./ui";
+import { motion, CountUp } from "./motion";
 import { ReasonCodeBadges } from "./ReasonCodes";
 import {
   canonicalJson,
@@ -25,6 +39,7 @@ import { live, MOCK_MODE } from "@/lib/near";
 import { useLive } from "@/lib/useLive";
 import { REPORTS_BY_ACTION } from "@/mock/reports";
 import type { CommitteeLive } from "@/lib/types";
+import { cn } from "@/lib/cn";
 
 type Phase = "draw" | "commit" | "reveal";
 
@@ -51,171 +66,240 @@ function GuardianCard({
   phase: Phase;
   index: number;
 }) {
+  const reduce = useReducedMotion();
   const revealed = phase === "reveal" && m.report;
   const slashed = m.row.status === "Slashed";
+  const commit = m.commitLive ?? m.commitHash;
+
   return (
-    <div
-      className={`animate-rise stagger-${index} rounded-lg border p-4 flex flex-col gap-3 ${
+    <motion.div
+      initial={reduce ? false : { opacity: 0, y: 14 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1], delay: index * 0.08 }}
+      className={cn(
+        "relative rounded-2xl border p-5 flex flex-col gap-4 backdrop-blur-xl transition-colors",
         slashed
-          ? "border-danger/50 bg-danger/5"
-          : "border-edge bg-ink/40"
-      }`}
+          ? "border-danger/35 bg-danger/[0.04]"
+          : "border-white/[0.07] bg-panel/50"
+      )}
     >
-      <div className="flex items-center justify-between">
-        <div>
-          <div className="font-mono text-xs text-slate-400">{m.row.id}</div>
-          <div className="text-sm text-white">
-            {m.row.account.split(".")[0]}
+      {/* header */}
+      <div className="flex items-start justify-between">
+        <div className="flex items-center gap-3">
+          <span
+            className={cn(
+              "flex h-9 w-9 items-center justify-center rounded-xl border font-mono text-xs font-semibold",
+              slashed
+                ? "border-danger/30 bg-danger/10 text-danger"
+                : "border-near/25 bg-near/10 text-near"
+            )}
+          >
+            {m.row.id}
+          </span>
+          <div>
+            <div className="text-sm font-medium text-white">
+              {m.row.account.split(".")[0]}
+            </div>
+            <div className="text-xs text-zinc-500">guardian</div>
           </div>
         </div>
-        <div className="flex flex-col items-end gap-1">
-          <Badge tone="near">{yoctoToNear(m.row.bond)} Ⓝ bond</Badge>
-          {slashed && <Badge tone="danger">SLASHED</Badge>}
+        <div className="flex flex-col items-end gap-1.5">
+          <Badge tone={slashed ? "danger" : "near"}>
+            {yoctoToNear(m.row.bond)} Ⓝ
+          </Badge>
+          {slashed && <StatusBadge status="Slashed" />}
         </div>
       </div>
 
+      {/* phase: draw */}
       {phase === "draw" && (
-        <div className="text-xs text-slate-500 italic">
+        <div className="flex items-center gap-2 text-xs text-zinc-500 rounded-lg border border-dashed border-white/10 px-3 py-2.5">
+          <Dices className="h-3.5 w-3.5" />
           drawn · awaiting commit…
         </div>
       )}
 
+      {/* phase: commit / reveal — commit hash */}
       {phase !== "draw" && (
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-xs uppercase tracking-wide text-slate-500">
-              commit hash (phase 1)
+        <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
+          <div className="flex items-center gap-2 mb-1.5">
+            <Hash className="h-3 w-3 text-zinc-500" />
+            <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+              commit hash
             </span>
             {m.source === "live" && m.commitLive && (
               <Badge tone="near">on-chain</Badge>
             )}
           </div>
-          <Mono>{shortHash(m.commitLive ?? m.commitHash, 18, 10)}</Mono>
-        </div>
-      )}
-
-      {revealed && m.report && (
-        <div className="animate-reveal border-t border-edge pt-3 flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <span className="text-xs uppercase tracking-wide text-slate-500">
-              revealed report (phase 2)
-            </span>
-            {m.report.approve ? (
-              <Badge tone={slashed ? "danger" : "ok"}>
-                {slashed ? "APPROVE (lie)" : "APPROVE"}
-              </Badge>
-            ) : (
-              <Badge tone="ok">REFUSE</Badge>
-            )}
-          </div>
-          <ReasonCodeBadges codes={m.report.reason_codes} />
-          <div className="grid grid-cols-2 gap-2 text-xs">
-            <Stat label="price usdc" value={price6(m.report.facts.price_usdc)} />
-            <Stat
-              label="read block"
-              value={m.report.facts.price_block ?? "—"}
+          {commit ? (
+            <Copyable
+              value={commit}
+              display={shortHash(commit, 16, 8)}
+              label="Commit hash copied"
             />
-            <Stat
-              label="slippage"
-              value={
-                m.report.facts.observed_slippage_bps != null
-                  ? `${m.report.facts.observed_slippage_bps} bps`
-                  : "—"
-              }
-            />
-            <Stat
-              label="paused"
-              value={m.report.facts.protocol_paused ? "yes" : "no"}
-            />
-          </div>
-          <div className="text-xs text-slate-500 mt-1">sources</div>
-          <div className="flex flex-col gap-1">
-            {m.report.sources.map((s, i) => (
-              <div key={i} className="flex items-center gap-2 text-xs">
-                {s.verifiable ? (
-                  <Badge tone="ok">verifiable</Badge>
-                ) : (
-                  <Badge tone="warn">unverifiable</Badge>
-                )}
-                <span className="text-slate-300">{s.name}</span>
-                <Mono>{s.payload_ref ?? s.endpoint}</Mono>
-              </div>
-            ))}
-          </div>
-          {m.commitMatches ? (
-            <div className="text-xs mt-1 text-ok">
-              ✓ sha256(report) == {m.source === "live" ? "view_commit" : "commit"}
-              <span className="text-slate-600">
-                {" "}
-                · recomputed in-browser
-                {m.source === "live" ? " vs on-chain" : ""}
-              </span>
-            </div>
-          ) : m.commitMatches === false ? (
-            <div className="text-xs mt-1 text-danger">
-              ✗ sha256(report) != view_commit · binding broken
-            </div>
           ) : (
-            <div className="text-xs mt-1 text-slate-600">
-              commit binding unavailable
-            </div>
+            <span className="font-mono text-xs text-zinc-600">—</span>
           )}
         </div>
       )}
-    </div>
+
+      {/* phase: reveal — the report resolves from the hash (blur → sharp) */}
+      <AnimatePresence>
+        {revealed && m.report && (
+          <motion.div
+            initial={reduce ? false : { opacity: 0, filter: "blur(6px)", y: 6 }}
+            animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
+            transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+            className="border-t border-white/[0.06] pt-4 flex flex-col gap-3"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+                revealed report
+              </span>
+              {m.report.approve ? (
+                <Badge tone={slashed ? "danger" : "ok"}>
+                  {slashed ? "APPROVE (lie)" : "APPROVE"}
+                </Badge>
+              ) : (
+                <Badge tone="ok">REFUSE</Badge>
+              )}
+            </div>
+            <ReasonCodeBadges codes={m.report.reason_codes} />
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
+              <Stat label="price usdc" value={price6(m.report.facts.price_usdc)} />
+              <Stat label="read block" value={m.report.facts.price_block ?? "—"} />
+              <Stat
+                label="slippage"
+                value={
+                  m.report.facts.observed_slippage_bps != null
+                    ? `${m.report.facts.observed_slippage_bps} bps`
+                    : "—"
+                }
+              />
+              <Stat
+                label="paused"
+                value={m.report.facts.protocol_paused ? "yes" : "no"}
+              />
+            </div>
+            <div>
+              <div className="text-[11px] font-medium uppercase tracking-wider text-zinc-500 mb-1.5">
+                sources
+              </div>
+              <div className="flex flex-col gap-1.5">
+                {m.report.sources.map((s, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs">
+                    {s.verifiable ? (
+                      <Badge tone="ok">verifiable</Badge>
+                    ) : (
+                      <Badge tone="warn">unverifiable</Badge>
+                    )}
+                    <span className="text-zinc-300">{s.name}</span>
+                    <span className="font-mono text-zinc-500 truncate">
+                      {s.payload_ref ?? s.endpoint}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* the sha256 binding proof */}
+            {m.commitMatches ? (
+              <div className="flex items-start gap-2 rounded-lg border border-near/20 bg-near/[0.06] px-3 py-2 text-xs text-near">
+                <ShieldCheck className="h-3.5 w-3.5 mt-px shrink-0" />
+                <span>
+                  sha256(report) =={" "}
+                  {m.source === "live" ? "view_commit" : "commit"}
+                  <span className="text-zinc-500">
+                    {" "}
+                    · recomputed in-browser
+                    {m.source === "live" ? " vs on-chain" : ""}
+                  </span>
+                </span>
+              </div>
+            ) : m.commitMatches === false ? (
+              <div className="flex items-start gap-2 rounded-lg border border-danger/25 bg-danger/[0.06] px-3 py-2 text-xs text-danger">
+                <ShieldX className="h-3.5 w-3.5 mt-px shrink-0" />
+                sha256(report) != view_commit · binding broken
+              </div>
+            ) : (
+              <div className="text-xs text-zinc-600">
+                commit binding unavailable
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   );
 }
+
+const PHASES: { key: Phase; label: string; icon: typeof Dices }[] = [
+  { key: "draw", label: "Committee drawn", icon: Dices },
+  { key: "commit", label: "Commit hashes", icon: Hash },
+  { key: "reveal", label: "Reveal + tally", icon: Fingerprint },
+];
 
 function PhaseStepper({
   phase,
   setPhase,
-  blocked,
 }: {
   phase: Phase;
   setPhase: (p: Phase) => void;
-  blocked: boolean;
 }) {
   const order: Phase[] = ["draw", "commit", "reveal"];
   const idx = order.indexOf(phase);
-  const labels: Record<Phase, string> = {
-    draw: "1 · Committee drawn",
-    commit: "2 · Commit hashes",
-    reveal: "3 · Reveal + tally",
-  };
+
   return (
-    <div className="flex items-center gap-2 flex-wrap">
-      {order.map((p, i) => (
-        <div key={p} className="flex items-center gap-2">
-          <div
-            className={`rounded-full px-3 py-1 text-xs font-medium border transition ${
-              idx >= i
-                ? "bg-near/15 text-near border-near/40"
-                : "bg-edge/30 text-slate-500 border-edge"
-            }`}
-          >
-            {labels[p]}
-          </div>
-          {i < 2 && <span className="text-slate-600">→</span>}
-        </div>
-      ))}
-      <div className="ml-auto flex gap-2">
+    <div className="flex flex-col sm:flex-row sm:items-center gap-4 rounded-2xl border border-white/[0.06] bg-panel/40 backdrop-blur-xl px-5 py-4">
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {PHASES.map((p, i) => {
+          const Icon = p.icon;
+          const done = idx > i;
+          const active = idx === i;
+          return (
+            <div key={p.key} className="flex items-center gap-1.5">
+              <div
+                className={cn(
+                  "inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors",
+                  active
+                    ? "border-near/35 bg-near/10 text-near"
+                    : done
+                    ? "border-white/10 bg-white/[0.04] text-zinc-300"
+                    : "border-white/[0.06] bg-transparent text-zinc-600"
+                )}
+              >
+                <span className="font-mono opacity-70">{i + 1}</span>
+                <Icon className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{p.label}</span>
+              </div>
+              {i < 2 && (
+                <ArrowRight
+                  className={cn(
+                    "h-3.5 w-3.5",
+                    idx > i ? "text-zinc-400" : "text-zinc-700"
+                  )}
+                />
+              )}
+            </div>
+          );
+        })}
+      </div>
+      <div className="flex gap-2 sm:ml-auto">
         <Button
           tone="ghost"
           onClick={() => setPhase(order[Math.max(0, idx - 1)])}
           disabled={idx === 0}
         >
-          ◀ back
+          <ArrowLeft className="h-4 w-4" /> Back
         </Button>
         <Button
           onClick={() => setPhase(order[Math.min(2, idx + 1)])}
           disabled={idx === 2}
         >
-          {phase === "draw" ? "Publish commits ▶" : "Reveal reports ▶"}
+          {phase === "draw" ? "Publish commits" : "Reveal reports"}
+          <ArrowRight className="h-4 w-4" />
         </Button>
       </div>
-      {blocked && phase === "reveal" && (
-        <span className="w-full" />
-      )}
     </div>
   );
 }
@@ -331,10 +415,10 @@ export function CommitteeView({
   if (state.loading && resolved.length === 0) {
     return (
       <div className="flex flex-col gap-4">
-        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-24 w-full" />
         <div className="grid md:grid-cols-3 gap-4">
           {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-56 w-full" />
+            <Skeleton key={i} className="h-72 w-full" />
           ))}
         </div>
       </div>
@@ -345,36 +429,39 @@ export function CommitteeView({
     <div className="flex flex-col gap-5">
       {state.error && <ErrorBanner message={state.error} />}
 
-      <Card>
-        <div className="flex flex-wrap items-center justify-between gap-3">
+      {/* action header */}
+      <Card className="relative overflow-hidden">
+        <div className="flex flex-wrap items-center justify-between gap-5">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs uppercase tracking-wide text-slate-500">
+            <div className="flex items-center gap-2.5">
+              <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
                 action
               </span>
               <LiveIndicator source={state.source} loading={state.loading} />
             </div>
-            <div className="font-mono text-sm text-white">
-              {actionId} · {template}
+            <div className="font-mono text-sm text-white mt-1.5">
+              <span className="text-near">{actionId}</span> · {template}
             </div>
           </div>
-          <div className="flex gap-4">
-            <Stat label="committee" value={`${committee.member_ids.length} guardians`} />
+          <div className="flex gap-6">
+            <Stat
+              label="committee"
+              value={`${committee.member_ids.length} guardians`}
+            />
             <Stat
               label="quorum bond"
               value={
-                <span className="text-near">{usdc(String(quorumUsdc))}</span>
+                <span className="text-near font-mono">
+                  {usdc(String(quorumUsdc))}
+                </span>
               }
             />
-            <Stat
-              label="threshold"
-              value={<span className="text-slate-200">2 of 3</span>}
-            />
+            <Stat label="threshold" value={<span className="font-mono">2 of 3</span>} />
           </div>
         </div>
       </Card>
 
-      <PhaseStepper phase={phase} setPhase={setPhase} blocked={!thresholdMet} />
+      <PhaseStepper phase={phase} setPhase={setPhase} />
 
       <div className="grid md:grid-cols-3 gap-4">
         {resolved.map((m, i) => (
@@ -384,45 +471,54 @@ export function CommitteeView({
 
       {/* tally — distinct BLOCKED state, NOT the green threshold badge */}
       <Card
-        className={
+        className={cn(
+          "transition-all",
           phase !== "reveal"
             ? "opacity-50"
             : thresholdMet
-            ? "border-ok/40"
-            : "border-danger/50 bg-danger/5"
-        }
+            ? "border-near/30 shadow-glow"
+            : "border-danger/35 bg-danger/[0.04] shadow-glow-danger"
+        )}
       >
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">
+            <div className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
               2-of-3 tally{" "}
-              <span className="text-slate-600">(live on-chain)</span>
+              <span className="text-zinc-600 normal-case tracking-normal">
+                (live on-chain)
+              </span>
             </div>
-            <div className="text-2xl font-semibold text-white mt-1">
-              {phase === "reveal" ? tally.approvals : "—"}
-              <span className="text-slate-500 text-lg"> / 3 approvals</span>
+            <div className="text-3xl font-semibold text-white mt-1.5 font-mono tabular-nums">
+              {phase === "reveal" ? (
+                <CountUp value={tally.approvals} />
+              ) : (
+                "—"
+              )}
+              <span className="text-zinc-600 text-xl"> / 3 approvals</span>
             </div>
           </div>
           {phase !== "reveal" ? (
             <Badge tone="muted">reveal to tally</Badge>
           ) : thresholdMet ? (
-            <Badge tone="ok">THRESHOLD MET · action may execute</Badge>
+            <Badge tone="ok">
+              <CheckCircle2 className="h-3.5 w-3.5" /> THRESHOLD MET · may execute
+            </Badge>
           ) : (
             <div className="flex items-center gap-3">
-              <span className="text-sm text-danger font-semibold">
+              <span className="text-sm text-danger font-semibold font-mono">
                 {tally.approvals}/3 &lt; 2-of-3
               </span>
-              <span className="rounded-md border border-danger/50 bg-danger/10 px-3 py-1 text-sm font-bold text-danger tracking-wide">
-                ⛔ BLOCKED
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-danger/40 bg-danger/10 px-3 py-1.5 text-sm font-bold text-danger tracking-wide">
+                <Ban className="h-4 w-4" /> BLOCKED
               </span>
             </div>
           )}
         </div>
         {phase === "reveal" && !thresholdMet && (
-          <p className="text-sm text-slate-400 mt-3 border-t border-edge pt-3">
-            Only the corrupt guardian approved, alone, off a non-verifiable
-            feed. The two honest guardians refused. 1 &lt; 2-of-3 → the action
-            never clears. User funds never move on a lie.
+          <p className="text-sm text-zinc-400 mt-4 border-t border-white/[0.06] pt-4 leading-relaxed">
+            Only the corrupt guardian approved, alone, off a non-verifiable feed.
+            The two honest guardians refused. 1 &lt; 2-of-3 → the action never
+            clears. User funds never move on a lie.
           </p>
         )}
       </Card>

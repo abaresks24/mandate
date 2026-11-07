@@ -13,7 +13,7 @@ export function ReasonCodeBadges({ codes }: { codes: ReasonCode[] }) {
     <div className="flex flex-wrap gap-1.5">
       {codes.map((c) => (
         <Badge key={c} tone={GOOD.includes(c) ? "ok" : "danger"}>
-          {c}
+          <span className="font-mono text-[10px]">{c}</span>
         </Badge>
       ))}
     </div>
