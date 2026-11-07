@@ -4,7 +4,6 @@ import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 import { Nav } from "@/components/Nav";
 import { Footer } from "@/components/Footer";
-import { ProgressRail, MobileStepper } from "@/components/journey";
 import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
@@ -37,14 +36,8 @@ export default function RootLayout({
       <body className="font-sans min-h-screen flex flex-col">
         <div className="app-backdrop" aria-hidden />
         <Nav />
-        <div className="w-full max-w-6xl mx-auto px-5 sm:px-6 py-8 sm:py-12 flex-1">
-          <div className="lg:grid lg:grid-cols-[220px_1fr] lg:gap-12">
-            <ProgressRail />
-            <main className="min-w-0">
-              <MobileStepper />
-              {children}
-            </main>
-          </div>
+        <div className="w-full max-w-4xl mx-auto px-5 sm:px-6 py-8 sm:py-12 flex-1">
+          <main className="min-w-0">{children}</main>
         </div>
         <Footer />
         <Toaster

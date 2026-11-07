@@ -11,7 +11,7 @@ import {
   StatusBadge,
 } from "@/components/ui";
 import { Reveal } from "@/components/motion";
-import { StepHeader, StepNav, Details } from "@/components/journey";
+import { PageIntro, Details } from "@/components/journey";
 import { price6, yoctoToNear } from "@/lib/format";
 import { live } from "@/lib/near";
 import { useLive } from "@/lib/useLive";
@@ -59,8 +59,7 @@ export default function SlashingStep() {
   return (
     <div className="flex flex-col gap-10">
       <Reveal>
-        <StepHeader
-          n={5}
+        <PageIntro
           kicker="when a guardian lies"
           title="A lie is blocked — and it costs the liar its bond."
           context="Guardian g7 approves a bad action alone, off a fabricated feed. The honest guardians refuse, the action stalls at 1 of 3, and g7 is slashed."
@@ -200,8 +199,6 @@ export default function SlashingStep() {
           </div>
         </Details>
       </Reveal>
-
-      <StepNav n={5} />
     </div>
   );
 }

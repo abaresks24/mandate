@@ -1,14 +1,14 @@
 import { CommitteeSummary, CommitteeView } from "@/components/CommitteeView";
+import { CrossChainProof } from "@/components/CrossChainProof";
 import { Reveal } from "@/components/motion";
-import { StepHeader, StepNav, Details } from "@/components/journey";
+import { PageIntro, Details } from "@/components/journey";
 
-export default function CommitteeStep() {
+export default function CommitteePage() {
   return (
     <div className="flex flex-col gap-10">
       <Reveal>
-        <StepHeader
-          n={4}
-          kicker="the committee decides"
+        <PageIntro
+          kicker="the committee"
           title="Three guardians vouch for the facts the chain can't see."
           context="A cross-chain Morpho / Sepolia action (a1) draws 3 bond-weighted guardians. They attest the remote facts — and 2 of 3 must agree."
         />
@@ -32,7 +32,9 @@ export default function CommitteeStep() {
         </Details>
       </Reveal>
 
-      <StepNav n={4} />
+      <Reveal delay={0.18}>
+        <CrossChainProof />
+      </Reveal>
     </div>
   );
 }
