@@ -1,266 +1,227 @@
-"use client";
-
-import { useState } from "react";
 import Link from "next/link";
-import { live } from "@/lib/near";
-import { useLive } from "@/lib/useLive";
-import { MANDATE } from "@/mock/mandate";
-import { Reveal } from "@/components/motion";
-import { PageIntro, Details } from "@/components/journey";
-import { Copyable, Dot, Label, LiveIndicator, Stat } from "@/components/ui";
-import { CrossChainProof } from "@/components/CrossChainProof";
-import { bps, usdc } from "@/lib/format";
-import type { Mandate } from "@/lib/types";
-import { cn } from "@/lib/cn";
+import { TopBar } from "@/components/TopBar";
+import { Button } from "@/components/button";
+import { LogoGlyph } from "@/components/brand";
 
-export default function Overview() {
+const DOCS_URL = "https://github.com/abaresks24/mandate";
+
+export default function Landing() {
   return (
-    <div className="flex flex-col gap-14">
-      <Reveal>
-        <PageIntro
-          kicker="The thesis"
-          title={
-            <>
-              Hand your money to an AI agent —{" "}
-              <span className="text-near">without trusting it.</span>
-            </>
-          }
-          context="An off-chain agent moves your capital within rules you set. You should not have to trust it — or the operator running it. A randomly-drawn, bonded TEE guardian committee attests the cross-chain facts the contract can't read. Bond is insurance. Lie and get slashed."
-        />
-      </Reveal>
+    <div className="flex min-h-screen flex-col">
+      <TopBar />
 
-      {/* The single, obvious starting action */}
-      <Reveal delay={0.06}>
-        <div>
-          <Link
-            href="/committee"
-            className="group inline-flex items-baseline gap-2 text-xl sm:text-2xl font-medium text-white hover:text-near transition-colors"
-          >
-            See the committee decide
-            <span
-              aria-hidden
-              className="transition-transform group-hover:translate-x-1"
-            >
-              →
-            </span>
-          </Link>
-          <p className="text-sm text-zinc-500 mt-2 max-w-xl leading-relaxed">
-            Three bonded guardians read a remote Sepolia fact and vote. Two of
-            three must agree before any money moves. Start there.
+      {/* HERO — fills the first viewport, airy, left-aligned, massive type */}
+      <section className="relative flex flex-1 items-center">
+        <div className="mx-auto w-full max-w-6xl px-5 pb-24 pt-20 sm:px-8 sm:pt-28">
+          <p className="mb-6 flex items-center gap-2 text-sm font-medium text-muted">
+            <span className="h-1.5 w-1.5 rounded-full bg-near" aria-hidden />
+            Live on NEAR testnet
+          </p>
+
+          <h1 className="display max-w-4xl text-5xl font-semibold leading-[1.03] text-ink sm:text-6xl lg:text-7xl">
+            Earn yield you can
+            <br />
+            actually trust.
+          </h1>
+
+          <p className="mt-8 max-w-xl text-lg leading-relaxed text-muted sm:text-xl">
+            An AI agent manages it — and you never have to trust the agent.
+            Its power is bounded on-chain, and every risky move is checked by
+            bonded guardians.
+          </p>
+
+          <div className="mt-12 flex flex-wrap items-center gap-4">
+            <Link href="/app">
+              <Button variant="primary" size="lg">
+                Launch app →
+              </Button>
+            </Link>
+            <a href={DOCS_URL} target="_blank" rel="noopener noreferrer">
+              <Button variant="secondary" size="lg">
+                Read the docs
+              </Button>
+            </a>
+          </div>
+        </div>
+      </section>
+
+      {/* (a) WHAT IT IS */}
+      <section className="border-t border-hairline bg-mist">
+        <div className="mx-auto max-w-6xl px-5 py-24 sm:px-8 sm:py-32">
+          <p className="mb-6 text-sm font-medium uppercase tracking-wider text-muted">
+            What it is
+          </p>
+          <h2 className="display max-w-3xl text-3xl font-semibold leading-tight text-ink sm:text-4xl lg:text-5xl">
+            An AI yield agent whose power is bounded on-chain.
+          </h2>
+          <div className="mt-14 grid gap-10 sm:grid-cols-3">
+            <Supporting
+              title="It can only act within your rules"
+              body="The mandate lives on-chain. Out-of-bounds actions are rejected by the contract — not by a promise."
+            />
+            <Supporting
+              title="Every risky move is checked"
+              body="A randomly-drawn committee of bonded guardians verifies the facts the contract can't see before capital moves."
+            />
+            <Supporting
+              title="Your funds stay yours"
+              body="The agent never holds custody. You keep a kill switch that unwinds everything on demand."
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* (b) HOW IT WORKS */}
+      <section className="border-t border-hairline">
+        <div className="mx-auto max-w-6xl px-5 py-24 sm:px-8 sm:py-32">
+          <p className="mb-6 text-sm font-medium uppercase tracking-wider text-muted">
+            How it works
+          </p>
+          <h2 className="display max-w-2xl text-3xl font-semibold leading-tight text-ink sm:text-4xl">
+            Four steps. No blind trust at any of them.
+          </h2>
+
+          <ol className="mt-16 divide-y divide-hairline border-y border-hairline">
+            <Step
+              n="01"
+              title="Tell it what you want"
+              body="Describe your goal in plain language — an amount, a target yield, a risk appetite."
+            />
+            <Step
+              n="02"
+              title="The AI proposes a strategy"
+              body="It drafts a plan that must fit inside your on-chain mandate. Anything outside the rules is refused before it ever runs."
+            />
+            <Step
+              n="03"
+              title="A guardian committee verifies every cross-chain move"
+              body="Bonded guardians attest remote facts in a TEE. Their pooled bond exceeds the value at stake — lie and the bond is slashed. Bond is insurance."
+            />
+            <Step
+              n="04"
+              title="You keep a kill switch"
+              body="At any moment you can halt the agent and unwind positions back to stablecoins. Control never leaves you."
+            />
+          </ol>
+        </div>
+      </section>
+
+      {/* (c) WHY IT'S SAFE / BUILT ON NEAR */}
+      <section className="border-t border-hairline bg-mist">
+        <div className="mx-auto max-w-6xl px-5 py-24 sm:px-8 sm:py-32">
+          <p className="mb-6 text-sm font-medium uppercase tracking-wider text-muted">
+            Why it&rsquo;s safe
+          </p>
+          <h2 className="display max-w-2xl text-3xl font-semibold leading-tight text-ink sm:text-4xl">
+            Safety is a property of the system, not a policy.
+          </h2>
+
+          <div className="mt-14 grid gap-px overflow-hidden rounded-xl border border-hairline bg-hairline sm:grid-cols-2 lg:grid-cols-4">
+            <Pillar
+              title="On-chain mandate"
+              body="The rules the agent must honor live in the contract."
+            />
+            <Pillar
+              title="TEE-attested guardians"
+              body="Guardians run verified code in trusted enclaves."
+            />
+            <Pillar
+              title="Bond as insurance"
+              body="Quorum bond exceeds the value at risk on every action."
+            />
+            <Pillar
+              title="Kill switch"
+              body="Owner can unwind to stablecoins at any time."
+            />
+          </div>
+
+          <p className="mt-10 max-w-2xl text-base leading-relaxed text-muted">
+            Built on NEAR. Live on testnet today — and it has already landed a
+            real cross-chain transaction on Ethereum via Chain Signatures, no
+            bridge involved.
           </p>
         </div>
-      </Reveal>
+      </section>
 
-      {/* The Rhea-vs-Morpho contrast — two columns, dividers not boxes */}
-      <Reveal delay={0.1}>
-        <div className="grid sm:grid-cols-2 gap-x-10 gap-y-8 border-t border-edge pt-10">
-          <div>
-            <Label>NEAR · Rhea</Label>
-            <h3 className="text-white font-medium mt-2">
-              The contract decides alone
-            </h3>
-            <p className="text-sm text-zinc-400 mt-1.5 leading-relaxed">
-              Same-transaction reads of Rhea / Ref state. The chain is the source
-              of truth.
-            </p>
-            <div className="flex items-center gap-2 text-sm text-zinc-300 mt-3">
-              <Dot tone="near" />
-              verified by contract
-            </div>
-          </div>
-          <div className="sm:border-l sm:border-edge sm:pl-10">
-            <Label>Cross-chain · Morpho / Sepolia</Label>
-            <h3 className="text-white font-medium mt-2">
-              The committee is required
-            </h3>
-            <p className="text-sm text-zinc-400 mt-1.5 leading-relaxed">
-              A NEAR contract cannot read Ethereum. A drawn, bonded committee
-              attests the facts it cannot see.
-            </p>
-            <div className="flex items-center gap-2 text-sm text-zinc-300 mt-3">
-              <Dot tone="evm" />
-              committee required
-            </div>
+      {/* (d) CLOSING CTA */}
+      <section className="border-t border-hairline">
+        <div className="mx-auto max-w-6xl px-5 py-28 text-center sm:px-8 sm:py-36">
+          <h2 className="display mx-auto max-w-3xl text-4xl font-semibold leading-[1.05] text-ink sm:text-5xl lg:text-6xl">
+            Put an agent to work. Keep the control.
+          </h2>
+          <div className="mt-12 flex justify-center">
+            <Link href="/app">
+              <Button variant="primary" size="lg">
+                Launch app →
+              </Button>
+            </Link>
           </div>
         </div>
-      </Reveal>
+      </section>
 
-      {/* Cross-chain Sepolia proof — the one card on this page */}
-      <Reveal delay={0.14}>
-        <div className="border-t border-edge pt-10">
-          <CrossChainProof />
-        </div>
-      </Reveal>
-
-      {/* Secondary — collapsed */}
-      <Reveal delay={0.16}>
-        <Details label="Why a committee for cross-chain, not for NEAR">
-          <div className="flex flex-col gap-4 text-sm leading-relaxed text-zinc-300 max-w-2xl">
-            <p>
-              On NEAR, the Vault contract reads Rhea / Ref state in the{" "}
-              <span className="text-white">same transaction</span>. The chain IS
-              the source of truth — no committee, no bond, nothing external to
-              attest.
-            </p>
-            <p>
-              A NEAR contract{" "}
-              <span className="text-white">cannot read Ethereum Sepolia</span>.
-              Price, slippage and protocol-liveness are facts it cannot see. So a
-              drawn, bonded committee reads Sepolia in a TEE and attests — their
-              pooled bond exceeds the action value, so{" "}
-              <span className="text-near">the bond is insurance</span>.
-            </p>
-            <p className="text-zinc-400 border-t border-edge pt-4">
-              The mandate check runs first:{" "}
-              <span className="text-white">
-                out-of-mandate actions are rejected without ever drawing a
-                committee
-              </span>{" "}
-              — guardians are never spent on an action that was never allowed
-              (prompt-injection defense).
-            </p>
+      {/* FOOTER */}
+      <footer className="border-t border-hairline bg-mist">
+        <div className="mx-auto flex max-w-6xl flex-col gap-6 px-5 py-12 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+          <div className="flex items-center gap-2">
+            <LogoGlyph className="h-5 w-5" />
+            <span className="text-sm font-semibold tracking-tight text-ink">
+              MANDATE
+            </span>
+            <span className="text-sm text-muted">· Built on NEAR</span>
           </div>
-        </Details>
-      </Reveal>
-
-      <Reveal delay={0.18}>
-        <MandateDetails />
-      </Reveal>
-
+          <div className="flex items-center gap-6 text-sm text-muted">
+            <a
+              href={DOCS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-ink transition-colors"
+            >
+              Docs
+            </a>
+            <a
+              href={DOCS_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="hover:text-ink transition-colors"
+            >
+              GitHub
+            </a>
+            <Link href="/app" className="hover:text-ink transition-colors">
+              Launch app
+            </Link>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }
 
-function MandateDetails() {
-  const mandate = useLive<Mandate>(() => live.mandate(), MANDATE, []);
-  const m = mandate.data ?? MANDATE;
-  const [refused, setRefused] = useState(false);
-
-  return (
-    <Details label="The mandate — the rules the agent must honor">
-      <div className="flex items-center justify-between mb-5">
-        <Label>proposed mandate</Label>
-        <LiveIndicator source={mandate.source} loading={mandate.loading} />
-      </div>
-
-      {refused ? (
-        <div className="flex flex-col items-start gap-3 py-1">
-          <div className="flex items-center gap-2 text-sm font-medium text-danger">
-            <Dot tone="danger" />
-            refused
-          </div>
-          <p className="text-base text-zinc-200 leading-relaxed max-w-xl">
-            &ldquo;40% APY with no risk&rdquo; is not realizable. The
-            deterministic risk model floors it above every sane ceiling.{" "}
-            <span className="text-white">
-              The agent will not propose a mandate it cannot honor.
-            </span>
-          </p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-8 gap-y-5">
-          <KeyStat label="target APY" value={bps(m.target_apy_bps)} accent />
-          <KeyStat label="max risk" value={`${m.max_risk_score}/100`} accent />
-          <KeyStat
-            label="allowed protocols"
-            value={m.allowed_protocols.join(", ")}
-          />
-        </div>
-      )}
-
-      {/* the refuse toggle */}
-      <div className="mt-6 flex items-center gap-4 border-t border-edge pt-5">
-        <span className="text-xs text-zinc-500">try a brief:</span>
-        <ToggleBtn active={!refused} onClick={() => setRefused(false)}>
-          realistic 8%
-        </ToggleBtn>
-        <ToggleBtn active={refused} onClick={() => setRefused(true)}>
-          40% · no risk
-        </ToggleBtn>
-      </div>
-
-      <div className="mt-6 grid sm:grid-cols-2 gap-x-8 gap-y-4 border-t border-edge pt-5">
-        <Stat label="owner" value={<Copyable value={m.owner} />} />
-        <Stat
-          label="max loss"
-          value={<span className="font-mono">{bps(m.max_loss_bps)}</span>}
-        />
-        <Stat
-          label="max share / protocol"
-          value={
-            <span className="font-mono">{bps(m.max_share_per_protocol_bps)}</span>
-          }
-        />
-        <Stat
-          label="daily cap"
-          value={<span className="font-mono">{usdc(m.daily_cap_usdc)}</span>}
-        />
-        <Stat label="allowed chains" value={m.allowed_chains.join(", ")} />
-        <Stat
-          label="committee"
-          value={
-            m.committee_threshold_usdc === "0" ? (
-              <span className="text-evm">permanent · every cross-chain action</span>
-            ) : (
-              <span className="font-mono">{usdc(m.committee_threshold_usdc)}</span>
-            )
-          }
-        />
-      </div>
-      <p className="text-xs text-zinc-500 mt-5 leading-relaxed border-t border-edge pt-4">
-        propose_action validates these deterministically BEFORE touching the
-        committee — it fails closed. Out-of-mandate templates are rejected without
-        ever drawing guardians.
-      </p>
-    </Details>
-  );
-}
-
-function KeyStat({
-  label,
-  value,
-  accent,
-}: {
-  label: string;
-  value: string;
-  accent?: boolean;
-}) {
+function Supporting({ title, body }: { title: string; body: string }) {
   return (
     <div>
-      <Label>{label}</Label>
-      <div
-        className={cn(
-          "mt-1.5 text-lg font-semibold font-mono",
-          accent ? "text-white" : "text-zinc-300"
-        )}
-      >
-        {value}
-      </div>
+      <h3 className="text-base font-semibold text-ink">{title}</h3>
+      <p className="mt-2 text-base leading-relaxed text-muted">{body}</p>
     </div>
   );
 }
 
-function ToggleBtn({
-  active,
-  onClick,
-  children,
-}: {
-  active: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
+function Step({ n, title, body }: { n: string; title: string; body: string }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "text-xs transition-colors border-b pb-0.5",
-        active
-          ? "text-near border-near"
-          : "text-zinc-500 border-transparent hover:text-zinc-300"
-      )}
-    >
-      {children}
-    </button>
+    <li className="grid gap-4 py-8 sm:grid-cols-[auto_1fr] sm:gap-10">
+      <span className="font-mono text-sm tabular-nums text-near">{n}</span>
+      <div className="max-w-2xl">
+        <h3 className="text-xl font-semibold text-ink">{title}</h3>
+        <p className="mt-2 text-base leading-relaxed text-muted">{body}</p>
+      </div>
+    </li>
+  );
+}
+
+function Pillar({ title, body }: { title: string; body: string }) {
+  return (
+    <div className="bg-paper p-6">
+      <h3 className="text-sm font-semibold text-ink">{title}</h3>
+      <p className="mt-2 text-sm leading-relaxed text-muted">{body}</p>
+    </div>
   );
 }

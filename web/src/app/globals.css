@@ -3,15 +3,18 @@
 @tailwind utilities;
 
 :root {
-  color-scheme: dark;
+  color-scheme: light;
 }
 
 @layer base {
   * {
-    @apply border-edge;
+    @apply border-hairline;
+  }
+  html {
+    scroll-behavior: smooth;
   }
   body {
-    @apply bg-ink text-zinc-200 antialiased;
+    @apply bg-paper text-ink antialiased;
     font-feature-settings: "cv11", "ss01";
     font-variant-ligatures: contextual;
   }
@@ -19,16 +22,18 @@
   .font-mono {
     font-variant-numeric: tabular-nums;
   }
+  /* Big display headings read best balanced + tight. */
+  .display {
+    text-wrap: balance;
+    letter-spacing: -0.035em;
+  }
 }
-
-/* --- Flat, calm background. No radial glow, no texture. The page is a
-   well-set article on a near-black surface. --- */
 
 /* --- Shimmer skeleton (polished loading state) --- */
 .skeleton {
   position: relative;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.04);
+  background: #f1f1f1;
 }
 .skeleton::after {
   content: "";
@@ -38,7 +43,7 @@
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(255, 255, 255, 0.06),
+    rgba(0, 0, 0, 0.04),
     transparent
   );
   animation: shimmer 1.6s infinite;
@@ -52,25 +57,22 @@
 /* Thin, unobtrusive scrollbars. */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #2a2a30 transparent;
+  scrollbar-color: #d4d4d4 transparent;
 }
 *::-webkit-scrollbar {
   height: 8px;
   width: 8px;
 }
 *::-webkit-scrollbar-thumb {
-  background: #2a2a30;
+  background: #d4d4d4;
   border-radius: 9999px;
 }
 
 @media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
   .skeleton::after {
     animation: none;
-  }
-  .animate-pulse-dot {
-    animation: none;
-  }
-  * {
-    scroll-behavior: auto !important;
   }
 }

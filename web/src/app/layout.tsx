@@ -2,27 +2,27 @@ import type { Metadata } from "next";
 import { GeistSans } from "geist/font/sans";
 import { GeistMono } from "geist/font/mono";
 import "./globals.css";
-import { Nav } from "@/components/Nav";
-import { Footer } from "@/components/Footer";
+import "@near-wallet-selector/modal-ui/styles.css";
 import { Toaster } from "sonner";
+import { WalletProvider } from "@/components/wallet/WalletProvider";
 
 export const metadata: Metadata = {
-  title: "MANDATE — hand your money to an AI agent, without trusting it",
+  title: "MANDATE — earn yield you can actually trust",
   description:
-    "An AI agent proposes templated actions; a randomly-drawn, bonded TEE guardian committee attests cross-chain facts the contract can't read. Bond = insurance. Lie and get slashed.",
+    "An AI agent manages your yield within an on-chain mandate — and you never have to trust the agent. Every risky cross-chain move is verified by a randomly-drawn committee of bonded guardians. Bond is insurance.",
   metadataBase: new URL("https://mandate.example"),
   openGraph: {
-    title: "MANDATE — trust-minimized AI money management",
+    title: "MANDATE — earn yield you can actually trust",
     description:
-      "An AI agent proposes templated actions; a bond-weighted TEE guardian committee attests cross-chain facts the contract can't read. Lie and get slashed.",
+      "An AI agent manages your yield, bounded on-chain and verified by a bonded guardian committee. Your funds stay yours.",
     siteName: "MANDATE",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "MANDATE — trust-minimized AI money management",
+    title: "MANDATE — earn yield you can actually trust",
     description:
-      "Bond-weighted TEE guardian committee attests cross-chain facts. Bond = insurance.",
+      "An AI yield agent whose power is bounded on-chain and checked by bonded guardians.",
   },
 };
 
@@ -32,24 +32,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} dark`}>
-      <body className="font-sans min-h-screen flex flex-col">
-        <Nav />
-        <div className="w-full max-w-4xl mx-auto px-5 sm:px-6 py-8 sm:py-12 flex-1">
-          <main className="min-w-0">{children}</main>
-        </div>
-        <Footer />
-        <Toaster
-          theme="dark"
-          position="bottom-right"
-          toastOptions={{
-            style: {
-              background: "#111114",
-              border: "1px solid #26262b",
-              color: "#e4e4e7",
-            },
-          }}
-        />
+    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
+      <body className="min-h-screen bg-paper font-sans text-ink">
+        <WalletProvider>{children}</WalletProvider>
+        <Toaster position="bottom-right" />
       </body>
     </html>
   );
