@@ -57,6 +57,189 @@ interface ResolvedMember {
   source: "live" | "mock";
 }
 
+// ---------------------------------------------------------------------------
+// Shared live resolver hook — owns ALL the data logic (view_committeeLive,
+// view_report / view_commit, in-browser sha256 binding, mock fallback).
+// Both the collapsed summary and the full lifecycle read from this.
+// ---------------------------------------------------------------------------
+function useResolvedCommittee(actionId: string) {
+  const reports = useMemo(() => REPORTS_BY_ACTION[actionId] ?? {}, [actionId]);
+  const mockCommittee: CommitteeLive = useMemo(() => {
+    const ids = Object.keys(reports);
+    const members: GuardianRow[] = ids.map((id) => ({
+      id,
+      account: `${id}.mandate-arthur.testnet`,
+      wasm_url: "",
+      wasm_sha256: "mock",
+      bond: id === "g7" ? "0" : "3000000000000000000000000",
+      status: id === "g7" ? "Slashed" : "Active",
+      last_drawn_vault: "demo.vaults.mandate-arthur.testnet",
+      unbond_ready_at: null,
+      bond_usdc: id === "g7" ? "0" : "15000000",
+    }));
+    const approvals = ids.filter((id) => reports[id]?.approve).length;
+    const tally: Tally = { approvals, threshold_met: approvals >= 2 };
+    return { action_id: actionId, member_ids: ids, members, tally };
+  }, [actionId, reports]);
+
+  const state = useLive<CommitteeLive>(
+    () => live.committeeLive(actionId),
+    mockCommittee,
+    [actionId]
+  );
+
+  const committee = state.data ?? mockCommittee;
+
+  // Resolve each drawn guardian's report + commit binding. In live mode we hit
+  // view_report / view_commit on the coordinator, parse the EXACT report string,
+  // recompute sha256 over its raw bytes (NOT a re-serialization), and compare it
+  // to the on-chain commit. On MOCK_MODE or any call failure we fall back to the
+  // mock report payload and hash sha256(canonicalJson(report)).
+  const [resolved, setResolved] = useState<ResolvedMember[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const out = await Promise.all(
+        committee.members.map(async (row): Promise<ResolvedMember> => {
+          const mockReport = reports[row.id] ?? null;
+          const mockResolved = async (): Promise<ResolvedMember> => {
+            const commitHash = mockReport
+              ? await sha256Hex(canonicalJson(mockReport))
+              : null;
+            return {
+              row,
+              report: mockReport,
+              reportString: mockReport ? canonicalJson(mockReport) : null,
+              commitHash,
+              commitLive: commitHash,
+              commitMatches: mockReport ? true : null,
+              source: "mock",
+            };
+          };
+
+          if (MOCK_MODE) return mockResolved();
+
+          try {
+            const [reportString, commitLive] = await Promise.all([
+              live.report(actionId, row.id),
+              live.commit(actionId, row.id).catch(() => null),
+            ]);
+            if (reportString == null) return mockResolved();
+
+            // Hash the EXACT bytes the on-chain commit was computed over.
+            const commitHash = await sha256Hex(reportString);
+            const report = JSON.parse(reportString) as GuardianReport;
+            const commitMatches =
+              commitLive != null ? commitHash === commitLive : null;
+            return {
+              row,
+              report,
+              reportString,
+              commitHash,
+              commitLive,
+              commitMatches,
+              source: "live",
+            };
+          } catch {
+            return mockResolved();
+          }
+        })
+      );
+      if (!cancelled) setResolved(out);
+    })();
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [committee, actionId]);
+
+  const quorumUsdc = committee.members.reduce(
+    (s, m) => s + Number(m.bond_usdc),
+    0
+  );
+
+  return { state, committee, resolved, quorumUsdc };
+}
+
+// ---------------------------------------------------------------------------
+// HERO (default view) — just the tally count-up + minimal guardian chips.
+// No commit/reveal detail. Live tally read straight off the chain.
+// ---------------------------------------------------------------------------
+export function CommitteeSummary({ actionId }: { actionId: string }) {
+  const { state, committee } = useResolvedCommittee(actionId);
+  const tally = committee.tally;
+  const met = tally.threshold_met;
+
+  if (state.loading && committee.members.length === 0) {
+    return <Skeleton className="h-56 w-full rounded-3xl" />;
+  }
+
+  return (
+    <Card
+      className={cn(
+        "relative overflow-hidden text-center",
+        met ? "border-near/30 shadow-glow" : "border-danger/35 shadow-glow-danger"
+      )}
+    >
+      <div
+        className={cn(
+          "pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full blur-3xl",
+          met ? "bg-near/10" : "bg-danger/10"
+        )}
+        aria-hidden
+      />
+      <div className="relative flex flex-col items-center gap-6 py-4">
+        <div className="flex items-center gap-2">
+          <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+            action {actionId} · live tally
+          </span>
+          <LiveIndicator source={state.source} loading={state.loading} />
+        </div>
+
+        <div
+          className={cn(
+            "text-6xl sm:text-7xl font-semibold font-mono tabular-nums",
+            met ? "text-near" : "text-danger"
+          )}
+        >
+          <CountUp value={tally.approvals} /> of {committee.member_ids.length}
+        </div>
+
+        {met ? (
+          <Badge tone="ok" className="text-sm px-3 py-1">
+            <CheckCircle2 className="h-4 w-4" /> approved · threshold met
+          </Badge>
+        ) : (
+          <Badge tone="danger" className="text-sm px-3 py-1">
+            <Ban className="h-4 w-4" /> blocked · threshold not met
+          </Badge>
+        )}
+
+        {/* the drawn guardians as minimal chips */}
+        <div className="flex items-center gap-2 flex-wrap justify-center">
+          {committee.members.map((m) => {
+            const slashed = m.status === "Slashed";
+            return (
+              <span
+                key={m.id}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-mono text-xs",
+                  slashed
+                    ? "border-danger/30 bg-danger/10 text-danger"
+                    : "border-near/25 bg-near/10 text-near"
+                )}
+              >
+                {m.id}
+                {slashed && <ShieldX className="h-3 w-3" />}
+              </span>
+            );
+          })}
+        </div>
+      </div>
+    </Card>
+  );
+}
+
 function GuardianCard({
   m,
   phase,
@@ -304,6 +487,10 @@ function PhaseStepper({
   );
 }
 
+// ---------------------------------------------------------------------------
+// FULL lifecycle — the interactive commit → reveal with sha256 proof.
+// Lives inside a collapsed Details disclosure on the step pages.
+// ---------------------------------------------------------------------------
 export function CommitteeView({
   actionId,
   template,
@@ -312,105 +499,11 @@ export function CommitteeView({
   template: string;
 }) {
   const [phase, setPhase] = useState<Phase>("draw");
-
-  // Mock fallback committee (shape-compatible) for offline / failure mode.
-  const reports = useMemo(() => REPORTS_BY_ACTION[actionId] ?? {}, [actionId]);
-  const mockCommittee: CommitteeLive = useMemo(() => {
-    const ids = Object.keys(reports);
-    const members: GuardianRow[] = ids.map((id) => ({
-      id,
-      account: `${id}.mandate-arthur.testnet`,
-      wasm_url: "",
-      wasm_sha256: "mock",
-      bond: id === "g7" ? "0" : "3000000000000000000000000",
-      status: id === "g7" ? "Slashed" : "Active",
-      last_drawn_vault: "demo.vaults.mandate-arthur.testnet",
-      unbond_ready_at: null,
-      bond_usdc: id === "g7" ? "0" : "15000000",
-    }));
-    const approvals = ids.filter((id) => reports[id]?.approve).length;
-    const tally: Tally = { approvals, threshold_met: approvals >= 2 };
-    return { action_id: actionId, member_ids: ids, members, tally };
-  }, [actionId, reports]);
-
-  const state = useLive<CommitteeLive>(
-    () => live.committeeLive(actionId),
-    mockCommittee,
-    [actionId]
-  );
-
-  const committee = state.data ?? mockCommittee;
-
-  // Resolve each drawn guardian's report + commit binding. In live mode we hit
-  // view_report / view_commit on the coordinator, parse the EXACT report string,
-  // recompute sha256 over its raw bytes (NOT a re-serialization), and compare it
-  // to the on-chain commit. On MOCK_MODE or any call failure we fall back to the
-  // mock report payload and hash sha256(canonicalJson(report)).
-  const [resolved, setResolved] = useState<ResolvedMember[]>([]);
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const out = await Promise.all(
-        committee.members.map(async (row): Promise<ResolvedMember> => {
-          // Mock fallback payload for this guardian.
-          const mockReport = reports[row.id] ?? null;
-          const mockResolved = async (): Promise<ResolvedMember> => {
-            const commitHash = mockReport
-              ? await sha256Hex(canonicalJson(mockReport))
-              : null;
-            return {
-              row,
-              report: mockReport,
-              reportString: mockReport ? canonicalJson(mockReport) : null,
-              commitHash,
-              commitLive: commitHash,
-              commitMatches: mockReport ? true : null,
-              source: "mock",
-            };
-          };
-
-          if (MOCK_MODE) return mockResolved();
-
-          try {
-            const [reportString, commitLive] = await Promise.all([
-              live.report(actionId, row.id),
-              live.commit(actionId, row.id).catch(() => null),
-            ]);
-            if (reportString == null) return mockResolved();
-
-            // Hash the EXACT bytes the on-chain commit was computed over.
-            const commitHash = await sha256Hex(reportString);
-            const report = JSON.parse(reportString) as GuardianReport;
-            const commitMatches =
-              commitLive != null ? commitHash === commitLive : null;
-            return {
-              row,
-              report,
-              reportString,
-              commitHash,
-              commitLive,
-              commitMatches,
-              source: "live",
-            };
-          } catch {
-            return mockResolved();
-          }
-        })
-      );
-      if (!cancelled) setResolved(out);
-    })();
-    return () => {
-      cancelled = true;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [committee, actionId]);
+  const { state, committee, resolved, quorumUsdc } =
+    useResolvedCommittee(actionId);
 
   const tally = committee.tally;
   const thresholdMet = tally.threshold_met;
-  const quorumUsdc = committee.members.reduce(
-    (s, m) => s + Number(m.bond_usdc),
-    0
-  );
 
   if (state.loading && resolved.length === 0) {
     return (
