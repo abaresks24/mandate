@@ -8,6 +8,9 @@ action must be attested by a **randomly-drawn committee of bonded guardians
 running in TEEs**, with bonds slashed on provable fault. Built for the NEAR
 Hackathon "Build Beyond Boundaries" (track: AI Security & Defense).
 
+**Live demo:** https://mandate-near-nine.vercel.app (reads the live testnet
+contracts) · **Repo:** https://github.com/abaresks24/mandate
+
 ## The thesis
 
 Everything verifiable on-chain is decided by the contract. The only thing left

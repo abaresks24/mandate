@@ -1,0 +1,14 @@
+target
+**/target
+**/node_modules
+.git
+contracts
+guardian
+integration
+agent
+scripts
+res
+*.md
+Cargo.*
+rust-toolchain*
+.cargo
