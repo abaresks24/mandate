@@ -1,26 +1,18 @@
 "use client";
 
 import { ReactNode, useState } from "react";
-import {
-  Check,
-  Copy,
-  AlertTriangle,
-  CheckCircle2,
-  ShieldAlert,
-  Ban,
-  Zap,
-  Circle,
-} from "lucide-react";
+import { Check, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/cn";
 
 // ---------------------------------------------------------------------------
-// Card — glassy, rounded-2xl, subtle border + soft shadow. Optional hover lift.
+// Card — a single flat bordered surface. Reserve for at most ONE genuinely
+// card-like thing per page; most structure should be whitespace + dividers.
+// No glass, no backdrop-blur, no soft shadow.
 // ---------------------------------------------------------------------------
 export function Card({
   children,
   className = "",
-  hover = false,
 }: {
   children: ReactNode;
   className?: string;
@@ -29,9 +21,7 @@ export function Card({
   return (
     <div
       className={cn(
-        "rounded-2xl border border-white/[0.06] bg-panel/60 backdrop-blur-xl shadow-card p-6 transition-all duration-200",
-        hover &&
-          "hover:border-white/10 hover:shadow-card-hover hover:bg-panel/80 hover:-translate-y-0.5",
+        "rounded-xl border border-edge bg-surface p-6",
         className
       )}
     >
@@ -61,73 +51,58 @@ export function SectionTitle({
   );
 }
 
-type Tone = "near" | "evm" | "ok" | "warn" | "danger" | "muted";
-
-const toneMap: Record<Tone, string> = {
-  near: "bg-near/10 text-near border-near/25",
-  evm: "bg-evm/10 text-evm border-evm/25",
-  ok: "bg-near/10 text-near border-near/25",
-  warn: "bg-warn/10 text-warn border-warn/30",
-  danger: "bg-danger/10 text-danger border-danger/30",
-  muted: "bg-white/[0.04] text-zinc-400 border-white/10",
-};
-
-export function Badge({
+// ---------------------------------------------------------------------------
+// Label — small, uppercase-tracked, muted section label. Replaces card walls.
+// ---------------------------------------------------------------------------
+export function Label({
   children,
-  tone = "muted",
   className,
 }: {
   children: ReactNode;
-  tone?: Tone;
+  className?: string;
+}) {
+  return (
+    <div
+      className={cn(
+        "text-[11px] font-medium uppercase tracking-wider text-zinc-500",
+        className
+      )}
+    >
+      {children}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Dot — the ONLY coloured signal glyph. A 6px dot before a word. Use only for
+// the single most important live / verified / slashed state.
+// ---------------------------------------------------------------------------
+type DotTone = "near" | "danger" | "warn" | "muted" | "evm";
+const dotColor: Record<DotTone, string> = {
+  near: "bg-near",
+  danger: "bg-danger",
+  warn: "bg-warn",
+  evm: "bg-evm",
+  muted: "bg-zinc-500",
+};
+
+export function Dot({
+  tone = "muted",
+  className,
+}: {
+  tone?: DotTone;
   className?: string;
 }) {
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium whitespace-nowrap",
-        toneMap[tone],
+        "inline-block h-1.5 w-1.5 rounded-full shrink-0",
+        dotColor[tone],
         className
       )}
-    >
-      {children}
-    </span>
+      aria-hidden
+    />
   );
-}
-
-// Status badge with the right icon + color for on-chain lifecycle states.
-export function StatusBadge({ status }: { status: string }) {
-  const s = status.toLowerCase();
-  if (s.includes("slash"))
-    return (
-      <Badge tone="danger">
-        <ShieldAlert className="h-3 w-3" /> Slashed
-      </Badge>
-    );
-  if (s.includes("block"))
-    return (
-      <Badge tone="danger">
-        <Ban className="h-3 w-3" /> Blocked
-      </Badge>
-    );
-  if (s.includes("execut"))
-    return (
-      <Badge tone="near">
-        <Zap className="h-3 w-3" /> Executed
-      </Badge>
-    );
-  if (s.includes("active"))
-    return (
-      <Badge tone="near">
-        <CheckCircle2 className="h-3 w-3" /> Active
-      </Badge>
-    );
-  if (s.includes("unbond"))
-    return (
-      <Badge tone="warn">
-        <Circle className="h-3 w-3" /> Unbonding
-      </Badge>
-    );
-  return <Badge tone="muted">{status}</Badge>;
 }
 
 export function Mono({
@@ -218,11 +193,10 @@ export function Button({
   className?: string;
 }) {
   const tones = {
-    default:
-      "bg-near text-ink hover:brightness-110 shadow-[0_0_20px_-6px_rgba(0,236,151,0.5)]",
+    default: "bg-near text-ink hover:brightness-110",
     danger: "bg-danger text-white hover:brightness-110",
     ghost:
-      "bg-white/[0.03] border border-white/10 text-zinc-200 hover:bg-white/[0.07] hover:border-white/20",
+      "border border-edge text-zinc-200 hover:border-zinc-600 hover:text-white",
   };
   return (
     <button
@@ -230,7 +204,7 @@ export function Button({
       onClick={onClick}
       disabled={disabled}
       className={cn(
-        "inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-all duration-150 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100",
+        "inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-all duration-150 active:scale-[0.98] disabled:opacity-40 disabled:cursor-not-allowed disabled:active:scale-100",
         tones[tone],
         className
       )}
@@ -255,10 +229,7 @@ export function RiskMeter({ score, max }: { score: number; max?: number }) {
       </div>
       <div className="h-1.5 w-full rounded-full bg-white/[0.06] overflow-hidden">
         <div
-          className={cn(
-            "h-full rounded-full transition-[width] duration-700 ease-out",
-            tone
-          )}
+          className={cn("h-full rounded-full transition-[width] duration-700 ease-out", tone)}
           style={{ width: `${pct}%` }}
         />
       </div>
@@ -274,20 +245,19 @@ export function Skeleton({ className = "" }: { className?: string }) {
 
 export function CardSkeleton({ rows = 3 }: { rows?: number }) {
   return (
-    <Card>
+    <div className="rounded-xl border border-edge bg-surface p-6">
       <Skeleton className="h-4 w-1/3 mb-5" />
       <div className="flex flex-col gap-3">
         {Array.from({ length: rows }).map((_, i) => (
           <Skeleton key={i} className="h-10 w-full" />
         ))}
       </div>
-    </Card>
+    </div>
   );
 }
 
-// Empty state — subtle icon + copy.
+// Empty state — subtle, flat.
 export function EmptyState({
-  icon,
   title,
   children,
 }: {
@@ -296,23 +266,17 @@ export function EmptyState({
   children?: ReactNode;
 }) {
   return (
-    <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-6 py-10 text-center">
-      {icon && (
-        <div className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full bg-white/[0.04] text-zinc-500">
-          {icon}
-        </div>
-      )}
+    <div className="border-t border-edge pt-6">
       <div className="text-sm font-medium text-zinc-200">{title}</div>
       {children && (
-        <div className="text-sm text-zinc-500 mt-1.5 max-w-md mx-auto">
-          {children}
-        </div>
+        <div className="text-sm text-zinc-500 mt-1.5 max-w-md">{children}</div>
       )}
     </div>
   );
 }
 
-// LIVE (green, pulsing) vs mock (amber). Truthful per the actual data source.
+// LIVE vs mock — small plain text with ONE small dot. No pill, no ping.
+// Truthful per the actual data source.
 export function LiveIndicator({
   source,
   loading,
@@ -322,9 +286,9 @@ export function LiveIndicator({
 }) {
   if (loading) {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-white/10 px-2.5 py-0.5 text-xs text-zinc-400">
-        <span className="h-1.5 w-1.5 rounded-full bg-zinc-500 animate-pulse" />
-        loading…
+      <span className="inline-flex items-center gap-1.5 text-xs text-zinc-500">
+        <Dot tone="muted" />
+        loading
       </span>
     );
   }
@@ -332,10 +296,8 @@ export function LiveIndicator({
   return (
     <span
       className={cn(
-        "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-medium",
-        isLive
-          ? "border-near/30 text-near bg-near/10"
-          : "border-warn/30 text-warn bg-warn/10"
+        "inline-flex items-center gap-1.5 text-xs",
+        isLive ? "text-zinc-300" : "text-zinc-500"
       )}
       title={
         isLive
@@ -343,30 +305,20 @@ export function LiveIndicator({
           : "Served from local mock data"
       }
     >
-      <span className="relative flex h-1.5 w-1.5">
-        {isLive && (
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-near opacity-60" />
-        )}
-        <span
-          className={cn(
-            "relative inline-flex h-1.5 w-1.5 rounded-full",
-            isLive ? "bg-near" : "bg-warn"
-          )}
-        />
-      </span>
-      {isLive ? "LIVE · testnet" : "mock"}
+      <Dot tone={isLive ? "near" : "warn"} />
+      {isLive ? "live · testnet" : "mock data"}
     </span>
   );
 }
 
 export function ErrorBanner({ message }: { message: string }) {
   return (
-    <div className="flex items-start gap-2 rounded-xl border border-warn/25 bg-warn/[0.06] px-3.5 py-2.5 text-xs text-warn">
-      <AlertTriangle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+    <p className="flex items-start gap-1.5 text-xs text-warn">
+      <Dot tone="warn" className="mt-1" />
       <span>
         Live contract call failed — showing mock fallback.{" "}
         <span className="text-warn/70 font-mono break-all">{message}</span>
       </span>
-    </div>
+    </p>
   );
 }

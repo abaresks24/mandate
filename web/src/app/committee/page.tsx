@@ -5,23 +5,23 @@ import { PageIntro, Details } from "@/components/journey";
 
 export default function CommitteePage() {
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-14">
       <Reveal>
         <PageIntro
-          kicker="the committee"
+          kicker="The committee"
           title="Three guardians vouch for the facts the chain can't see."
           context="A cross-chain Morpho / Sepolia action (a1) draws 3 bond-weighted guardians. They attest the remote facts — and 2 of 3 must agree."
         />
       </Reveal>
 
-      {/* THE visual hero — just the 3 of 3 count + drawn guardian chips */}
-      <Reveal delay={0.08}>
+      {/* The hero — the tally is the whole focus */}
+      <Reveal delay={0.06}>
         <CommitteeSummary actionId="a1" />
       </Reveal>
 
-      <Reveal delay={0.14}>
+      <Reveal delay={0.1}>
         <Details label="Show the commit → reveal lifecycle">
-          <p className="text-sm text-zinc-400 leading-relaxed mb-5 max-w-2xl">
+          <p className="text-sm text-zinc-400 leading-relaxed mb-6 max-w-2xl">
             Each guardian publishes a commit hash, then reveals its signed report.
             Your browser recomputes{" "}
             <span className="font-mono text-near">sha256(report) == commit</span>{" "}
@@ -32,9 +32,12 @@ export default function CommitteePage() {
         </Details>
       </Reveal>
 
-      <Reveal delay={0.18}>
-        <CrossChainProof />
+      <Reveal delay={0.14}>
+        <div className="border-t border-edge pt-10">
+          <CrossChainProof />
+        </div>
       </Reveal>
+
     </div>
   );
 }

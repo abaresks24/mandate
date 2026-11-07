@@ -21,35 +21,8 @@
   }
 }
 
-/* --- Layered, restrained backdrop. One soft green glow top-left, one cool
-   indigo wash top-right, plus a faint vignette. Fixed so it feels like a
-   product surface, not a scrolling texture. --- */
-.app-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: -1;
-  background:
-    radial-gradient(
-      60rem 40rem at 12% -8%,
-      rgba(0, 236, 151, 0.07),
-      transparent 55%
-    ),
-    radial-gradient(
-      50rem 36rem at 92% -4%,
-      rgba(129, 140, 248, 0.06),
-      transparent 55%
-    ),
-    radial-gradient(70rem 70rem at 50% 120%, rgba(0, 236, 151, 0.03), transparent 60%);
-}
-
-/* Subtle grid texture for hero sections. */
-.grid-texture {
-  background-image:
-    linear-gradient(to right, rgba(255, 255, 255, 0.025) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(255, 255, 255, 0.025) 1px, transparent 1px);
-  background-size: 44px 44px;
-  mask-image: radial-gradient(ellipse 70% 60% at 50% 0%, #000 40%, transparent 100%);
-}
+/* --- Flat, calm background. No radial glow, no texture. The page is a
+   well-set article on a near-black surface. --- */
 
 /* --- Shimmer skeleton (polished loading state) --- */
 .skeleton {

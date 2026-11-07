@@ -2,31 +2,19 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AnimatePresence, useReducedMotion } from "framer-motion";
-import {
-  ArrowRight,
-  ArrowLeft,
-  Ban,
-  CheckCircle2,
-  Hash,
-  ShieldCheck,
-  ShieldX,
-  Fingerprint,
-  Dices,
-} from "lucide-react";
 import { GuardianReport, GuardianRow, Tally } from "@/lib/types";
 import {
-  Badge,
   Button,
-  Card,
   Copyable,
+  Dot,
   ErrorBanner,
+  Label,
   LiveIndicator,
   Skeleton,
   Stat,
-  StatusBadge,
 } from "./ui";
 import { motion, CountUp } from "./motion";
-import { ReasonCodeBadges } from "./ReasonCodes";
+import { ReasonCodes } from "./ReasonCodes";
 import {
   canonicalJson,
   price6,
@@ -162,8 +150,8 @@ function useResolvedCommittee(actionId: string) {
 }
 
 // ---------------------------------------------------------------------------
-// HERO (default view) — just the tally count-up + minimal guardian chips.
-// No commit/reveal detail. Live tally read straight off the chain.
+// SUMMARY (default view) — the tally is the hero: one huge "N of M", quiet
+// everything else. No card, no glow. The verdict is a coloured word.
 // ---------------------------------------------------------------------------
 export function CommitteeSummary({ actionId }: { actionId: string }) {
   const { state, committee } = useResolvedCommittee(actionId);
@@ -171,76 +159,55 @@ export function CommitteeSummary({ actionId }: { actionId: string }) {
   const met = tally.threshold_met;
 
   if (state.loading && committee.members.length === 0) {
-    return <Skeleton className="h-56 w-full rounded-3xl" />;
+    return <Skeleton className="h-40 w-full rounded-xl" />;
   }
 
   return (
-    <Card
-      className={cn(
-        "relative overflow-hidden text-center",
-        met ? "border-near/30 shadow-glow" : "border-danger/35 shadow-glow-danger"
-      )}
-    >
+    <div className="flex flex-col gap-5">
+      <div className="flex items-center gap-2">
+        <Label>action {actionId} · tally</Label>
+        <LiveIndicator source={state.source} loading={state.loading} />
+      </div>
+
       <div
         className={cn(
-          "pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full blur-3xl",
-          met ? "bg-near/10" : "bg-danger/10"
+          "text-6xl sm:text-7xl font-semibold font-mono tabular-nums tracking-tight",
+          met ? "text-white" : "text-danger"
         )}
-        aria-hidden
-      />
-      <div className="relative flex flex-col items-center gap-6 py-4">
-        <div className="flex items-center gap-2">
-          <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
-            action {actionId} · live tally
-          </span>
-          <LiveIndicator source={state.source} loading={state.loading} />
-        </div>
-
-        <div
-          className={cn(
-            "text-6xl sm:text-7xl font-semibold font-mono tabular-nums",
-            met ? "text-near" : "text-danger"
-          )}
-        >
-          <CountUp value={tally.approvals} /> of {committee.member_ids.length}
-        </div>
-
-        {met ? (
-          <Badge tone="ok" className="text-sm px-3 py-1">
-            <CheckCircle2 className="h-4 w-4" /> approved · threshold met
-          </Badge>
-        ) : (
-          <Badge tone="danger" className="text-sm px-3 py-1">
-            <Ban className="h-4 w-4" /> blocked · threshold not met
-          </Badge>
-        )}
-
-        {/* the drawn guardians as minimal chips */}
-        <div className="flex items-center gap-2 flex-wrap justify-center">
-          {committee.members.map((m) => {
-            const slashed = m.status === "Slashed";
-            return (
-              <span
-                key={m.id}
-                className={cn(
-                  "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 font-mono text-xs",
-                  slashed
-                    ? "border-danger/30 bg-danger/10 text-danger"
-                    : "border-near/25 bg-near/10 text-near"
-                )}
-              >
-                {m.id}
-                {slashed && <ShieldX className="h-3 w-3" />}
-              </span>
-            );
-          })}
-        </div>
+      >
+        <CountUp value={tally.approvals} /> of {committee.member_ids.length}
       </div>
-    </Card>
+
+      <div className="flex items-center gap-2 text-sm">
+        <Dot tone={met ? "near" : "danger"} />
+        <span className={met ? "text-near" : "text-danger"}>
+          {met ? "approved" : "blocked"}
+        </span>
+        <span className="text-zinc-500">
+          · {met ? "threshold met" : "threshold not met"}
+        </span>
+      </div>
+
+      {/* the drawn guardians — plain mono list */}
+      <div className="flex items-center gap-x-4 gap-y-1 flex-wrap font-mono text-xs text-zinc-400">
+        {committee.members.map((m) => {
+          const slashed = m.status === "Slashed";
+          return (
+            <span key={m.id} className="inline-flex items-center gap-1.5">
+              <Dot tone={slashed ? "danger" : "near"} />
+              <span className={slashed ? "text-danger" : "text-zinc-300"}>
+                {m.id}
+              </span>
+              {slashed && <span className="text-danger">slashed</span>}
+            </span>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
-function GuardianCard({
+function GuardianRowView({
   m,
   phase,
   index,
@@ -256,64 +223,49 @@ function GuardianCard({
 
   return (
     <motion.div
-      initial={reduce ? false : { opacity: 0, y: 14 }}
+      initial={reduce ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1], delay: index * 0.08 }}
-      className={cn(
-        "relative rounded-2xl border p-5 flex flex-col gap-4 backdrop-blur-xl transition-colors",
-        slashed
-          ? "border-danger/35 bg-danger/[0.04]"
-          : "border-white/[0.07] bg-panel/50"
-      )}
+      transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1], delay: index * 0.06 }}
+      className="py-5 first:pt-0"
     >
       {/* header */}
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3">
-          <span
-            className={cn(
-              "flex h-9 w-9 items-center justify-center rounded-xl border font-mono text-xs font-semibold",
-              slashed
-                ? "border-danger/30 bg-danger/10 text-danger"
-                : "border-near/25 bg-near/10 text-near"
-            )}
-          >
-            {m.row.id}
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-center gap-2.5">
+          <Dot tone={slashed ? "danger" : "near"} />
+          <span className="font-mono text-sm text-white">{m.row.id}</span>
+          <span className="text-sm text-zinc-500">
+            {m.row.account.split(".")[0]}
           </span>
-          <div>
-            <div className="text-sm font-medium text-white">
-              {m.row.account.split(".")[0]}
-            </div>
-            <div className="text-xs text-zinc-500">guardian</div>
-          </div>
+          {slashed && (
+            <span className="text-xs text-danger">slashed</span>
+          )}
         </div>
-        <div className="flex flex-col items-end gap-1.5">
-          <Badge tone={slashed ? "danger" : "near"}>
-            {yoctoToNear(m.row.bond)} Ⓝ
-          </Badge>
-          {slashed && <StatusBadge status="Slashed" />}
-        </div>
+        <span
+          className={cn(
+            "font-mono text-sm",
+            slashed ? "text-danger" : "text-zinc-300"
+          )}
+        >
+          {yoctoToNear(m.row.bond)} Ⓝ
+        </span>
       </div>
 
       {/* phase: draw */}
       {phase === "draw" && (
-        <div className="flex items-center gap-2 text-xs text-zinc-500 rounded-lg border border-dashed border-white/10 px-3 py-2.5">
-          <Dices className="h-3.5 w-3.5" />
-          drawn · awaiting commit…
-        </div>
+        <p className="mt-3 text-xs text-zinc-500">drawn · awaiting commit</p>
       )}
 
       {/* phase: commit / reveal — commit hash */}
       {phase !== "draw" && (
-        <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-2.5">
-          <div className="flex items-center gap-2 mb-1.5">
-            <Hash className="h-3 w-3 text-zinc-500" />
-            <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
-              commit hash
-            </span>
-            {m.source === "live" && m.commitLive && (
-              <Badge tone="near">on-chain</Badge>
-            )}
-          </div>
+        <div className="mt-3">
+          <Label className="mb-1.5">
+            commit hash
+            {m.source === "live" && m.commitLive ? (
+              <span className="text-near ml-2 normal-case tracking-normal">
+                on-chain
+              </span>
+            ) : null}
+          </Label>
           {commit ? (
             <Copyable
               value={commit}
@@ -333,21 +285,28 @@ function GuardianCard({
             initial={reduce ? false : { opacity: 0, filter: "blur(6px)", y: 6 }}
             animate={{ opacity: 1, filter: "blur(0px)", y: 0 }}
             transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-            className="border-t border-white/[0.06] pt-4 flex flex-col gap-3"
+            className="mt-4 border-t border-edge pt-4 flex flex-col gap-3"
           >
             <div className="flex items-center justify-between">
-              <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
-                revealed report
+              <Label>revealed report</Label>
+              <span
+                className={cn(
+                  "text-xs font-medium",
+                  m.report.approve
+                    ? slashed
+                      ? "text-danger"
+                      : "text-near"
+                    : "text-zinc-300"
+                )}
+              >
+                {m.report.approve
+                  ? slashed
+                    ? "APPROVE (lie)"
+                    : "APPROVE"
+                  : "REFUSE"}
               </span>
-              {m.report.approve ? (
-                <Badge tone={slashed ? "danger" : "ok"}>
-                  {slashed ? "APPROVE (lie)" : "APPROVE"}
-                </Badge>
-              ) : (
-                <Badge tone="ok">REFUSE</Badge>
-              )}
             </div>
-            <ReasonCodeBadges codes={m.report.reason_codes} />
+            <ReasonCodes codes={m.report.reason_codes} />
             <div className="grid grid-cols-2 gap-x-4 gap-y-2.5">
               <Stat label="price usdc" value={price6(m.report.facts.price_usdc)} />
               <Stat label="read block" value={m.report.facts.price_block ?? "—"} />
@@ -365,17 +324,15 @@ function GuardianCard({
               />
             </div>
             <div>
-              <div className="text-[11px] font-medium uppercase tracking-wider text-zinc-500 mb-1.5">
-                sources
-              </div>
+              <Label className="mb-1.5">sources</Label>
               <div className="flex flex-col gap-1.5">
                 {m.report.sources.map((s, i) => (
                   <div key={i} className="flex items-center gap-2 text-xs">
-                    {s.verifiable ? (
-                      <Badge tone="ok">verifiable</Badge>
-                    ) : (
-                      <Badge tone="warn">unverifiable</Badge>
-                    )}
+                    <span
+                      className={s.verifiable ? "text-zinc-400" : "text-warn"}
+                    >
+                      {s.verifiable ? "verifiable" : "unverifiable"}
+                    </span>
                     <span className="text-zinc-300">{s.name}</span>
                     <span className="font-mono text-zinc-500 truncate">
                       {s.payload_ref ?? s.endpoint}
@@ -385,10 +342,10 @@ function GuardianCard({
               </div>
             </div>
 
-            {/* the sha256 binding proof */}
+            {/* the sha256 binding proof — the ONE green signal of this view */}
             {m.commitMatches ? (
-              <div className="flex items-start gap-2 rounded-lg border border-near/20 bg-near/[0.06] px-3 py-2 text-xs text-near">
-                <ShieldCheck className="h-3.5 w-3.5 mt-px shrink-0" />
+              <p className="flex items-start gap-1.5 text-xs text-near">
+                <Dot tone="near" className="mt-1" />
                 <span>
                   sha256(report) =={" "}
                   {m.source === "live" ? "view_commit" : "commit"}
@@ -398,16 +355,14 @@ function GuardianCard({
                     {m.source === "live" ? " vs on-chain" : ""}
                   </span>
                 </span>
-              </div>
+              </p>
             ) : m.commitMatches === false ? (
-              <div className="flex items-start gap-2 rounded-lg border border-danger/25 bg-danger/[0.06] px-3 py-2 text-xs text-danger">
-                <ShieldX className="h-3.5 w-3.5 mt-px shrink-0" />
+              <p className="flex items-start gap-1.5 text-xs text-danger">
+                <Dot tone="danger" className="mt-1" />
                 sha256(report) != view_commit · binding broken
-              </div>
+              </p>
             ) : (
-              <div className="text-xs text-zinc-600">
-                commit binding unavailable
-              </div>
+              <p className="text-xs text-zinc-600">commit binding unavailable</p>
             )}
           </motion.div>
         )}
@@ -416,10 +371,10 @@ function GuardianCard({
   );
 }
 
-const PHASES: { key: Phase; label: string; icon: typeof Dices }[] = [
-  { key: "draw", label: "Committee drawn", icon: Dices },
-  { key: "commit", label: "Commit hashes", icon: Hash },
-  { key: "reveal", label: "Reveal + tally", icon: Fingerprint },
+const PHASES: { key: Phase; label: string }[] = [
+  { key: "draw", label: "Drawn" },
+  { key: "commit", label: "Commit" },
+  { key: "reveal", label: "Reveal" },
 ];
 
 function PhaseStepper({
@@ -433,37 +388,33 @@ function PhaseStepper({
   const idx = order.indexOf(phase);
 
   return (
-    <div className="flex flex-col sm:flex-row sm:items-center gap-4 rounded-2xl border border-white/[0.06] bg-panel/40 backdrop-blur-xl px-5 py-4">
-      <div className="flex items-center gap-1.5 flex-wrap">
+    <div className="flex flex-col sm:flex-row sm:items-center gap-4 border-y border-edge py-4">
+      <div className="flex items-center gap-4 text-sm font-mono">
         {PHASES.map((p, i) => {
-          const Icon = p.icon;
-          const done = idx > i;
           const active = idx === i;
+          const done = idx > i;
           return (
-            <div key={p.key} className="flex items-center gap-1.5">
-              <div
+            <span key={p.key} className="inline-flex items-center gap-2">
+              <span
                 className={cn(
-                  "inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-xs font-medium border transition-colors",
-                  active
-                    ? "border-near/35 bg-near/10 text-near"
-                    : done
-                    ? "border-white/10 bg-white/[0.04] text-zinc-300"
-                    : "border-white/[0.06] bg-transparent text-zinc-600"
+                  "text-[11px] tabular-nums",
+                  active ? "text-near" : "text-zinc-600"
                 )}
               >
-                <span className="font-mono opacity-70">{i + 1}</span>
-                <Icon className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{p.label}</span>
-              </div>
-              {i < 2 && (
-                <ArrowRight
-                  className={cn(
-                    "h-3.5 w-3.5",
-                    idx > i ? "text-zinc-400" : "text-zinc-700"
-                  )}
-                />
-              )}
-            </div>
+                {String(i + 1).padStart(2, "0")}
+              </span>
+              <span
+                className={cn(
+                  active
+                    ? "text-white"
+                    : done
+                    ? "text-zinc-400"
+                    : "text-zinc-600"
+                )}
+              >
+                {p.label}
+              </span>
+            </span>
           );
         })}
       </div>
@@ -473,14 +424,13 @@ function PhaseStepper({
           onClick={() => setPhase(order[Math.max(0, idx - 1)])}
           disabled={idx === 0}
         >
-          <ArrowLeft className="h-4 w-4" /> Back
+          Back
         </Button>
         <Button
           onClick={() => setPhase(order[Math.min(2, idx + 1)])}
           disabled={idx === 2}
         >
-          {phase === "draw" ? "Publish commits" : "Reveal reports"}
-          <ArrowRight className="h-4 w-4" />
+          {phase === "draw" ? "Publish commits →" : "Reveal reports →"}
         </Button>
       </div>
     </div>
@@ -508,113 +458,94 @@ export function CommitteeView({
   if (state.loading && resolved.length === 0) {
     return (
       <div className="flex flex-col gap-4">
-        <Skeleton className="h-24 w-full" />
-        <div className="grid md:grid-cols-3 gap-4">
-          {[0, 1, 2].map((i) => (
-            <Skeleton key={i} className="h-72 w-full" />
-          ))}
-        </div>
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-64 w-full" />
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-6">
       {state.error && <ErrorBanner message={state.error} />}
 
-      {/* action header */}
-      <Card className="relative overflow-hidden">
-        <div className="flex flex-wrap items-center justify-between gap-5">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
-                action
-              </span>
-              <LiveIndicator source={state.source} loading={state.loading} />
-            </div>
-            <div className="font-mono text-sm text-white mt-1.5">
-              <span className="text-near">{actionId}</span> · {template}
-            </div>
+      {/* action header — flat */}
+      <div className="flex flex-wrap items-start justify-between gap-5">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <Label>action</Label>
+            <LiveIndicator source={state.source} loading={state.loading} />
           </div>
-          <div className="flex gap-6">
-            <Stat
-              label="committee"
-              value={`${committee.member_ids.length} guardians`}
-            />
-            <Stat
-              label="quorum bond"
-              value={
-                <span className="text-near font-mono">
-                  {usdc(String(quorumUsdc))}
-                </span>
-              }
-            />
-            <Stat label="threshold" value={<span className="font-mono">2 of 3</span>} />
+          <div className="font-mono text-sm text-white mt-1.5">
+            <span className="text-near">{actionId}</span> · {template}
           </div>
         </div>
-      </Card>
+        <div className="flex gap-6">
+          <Stat
+            label="committee"
+            value={`${committee.member_ids.length} guardians`}
+          />
+          <Stat
+            label="quorum bond"
+            value={
+              <span className="font-mono text-zinc-200">
+                {usdc(String(quorumUsdc))}
+              </span>
+            }
+          />
+          <Stat label="threshold" value={<span className="font-mono">2 of 3</span>} />
+        </div>
+      </div>
 
       <PhaseStepper phase={phase} setPhase={setPhase} />
 
-      <div className="grid md:grid-cols-3 gap-4">
+      <div className="divide-y divide-edge">
         {resolved.map((m, i) => (
-          <GuardianCard key={m.row.id} m={m} phase={phase} index={i} />
+          <GuardianRowView key={m.row.id} m={m} phase={phase} index={i} />
         ))}
       </div>
 
-      {/* tally — distinct BLOCKED state, NOT the green threshold badge */}
-      <Card
+      {/* tally — the one bordered surface. BLOCKED is red; met is quiet white. */}
+      <div
         className={cn(
-          "transition-all",
-          phase !== "reveal"
-            ? "opacity-50"
-            : thresholdMet
-            ? "border-near/30 shadow-glow"
-            : "border-danger/35 bg-danger/[0.04] shadow-glow-danger"
+          "rounded-xl border p-6 transition-opacity",
+          phase !== "reveal" ? "opacity-50 border-edge" : "border-edge"
         )}
       >
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <div className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
+            <Label>
               2-of-3 tally{" "}
               <span className="text-zinc-600 normal-case tracking-normal">
                 (live on-chain)
               </span>
-            </div>
-            <div className="text-3xl font-semibold text-white mt-1.5 font-mono tabular-nums">
-              {phase === "reveal" ? (
-                <CountUp value={tally.approvals} />
-              ) : (
-                "—"
-              )}
+            </Label>
+            <div className="text-4xl font-semibold text-white mt-1.5 font-mono tabular-nums">
+              {phase === "reveal" ? <CountUp value={tally.approvals} /> : "—"}
               <span className="text-zinc-600 text-xl"> / 3 approvals</span>
             </div>
           </div>
           {phase !== "reveal" ? (
-            <Badge tone="muted">reveal to tally</Badge>
+            <span className="text-sm text-zinc-500">reveal to tally</span>
           ) : thresholdMet ? (
-            <Badge tone="ok">
-              <CheckCircle2 className="h-3.5 w-3.5" /> THRESHOLD MET · may execute
-            </Badge>
+            <span className="inline-flex items-center gap-2 text-sm text-near">
+              <Dot tone="near" />
+              threshold met · may execute
+            </span>
           ) : (
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-danger font-semibold font-mono">
-                {tally.approvals}/3 &lt; 2-of-3
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-lg border border-danger/40 bg-danger/10 px-3 py-1.5 text-sm font-bold text-danger tracking-wide">
-                <Ban className="h-4 w-4" /> BLOCKED
-              </span>
-            </div>
+            <span className="inline-flex items-center gap-2 text-sm font-semibold text-danger">
+              <Dot tone="danger" />
+              {tally.approvals}/3 &lt; 2-of-3 · blocked
+            </span>
           )}
         </div>
         {phase === "reveal" && !thresholdMet && (
-          <p className="text-sm text-zinc-400 mt-4 border-t border-white/[0.06] pt-4 leading-relaxed">
+          <p className="text-sm text-zinc-400 mt-5 border-t border-edge pt-5 leading-relaxed">
             Only the corrupt guardian approved, alone, off a non-verifiable feed.
             The two honest guardians refused. 1 &lt; 2-of-3 → the action never
             clears. User funds never move on a lie.
           </p>
         )}
-      </Card>
+      </div>
     </div>
   );
 }

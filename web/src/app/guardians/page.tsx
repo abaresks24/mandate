@@ -3,17 +3,17 @@
 import { live } from "@/lib/near";
 import { useLive } from "@/lib/useLive";
 import {
-  CardSkeleton,
   Copyable,
+  Dot,
   ErrorBanner,
+  Label,
   LiveIndicator,
-  StatusBadge,
+  Skeleton,
 } from "@/components/ui";
 import { Reveal } from "@/components/motion";
 import { PageIntro, Details } from "@/components/journey";
 import { shortHash, usdc, yoctoToNear } from "@/lib/format";
 import type { GuardianRow } from "@/lib/types";
-import { Cpu } from "lucide-react";
 
 const MOCK_GUARDIANS: GuardianRow[] = [
   "g1",
@@ -42,77 +42,74 @@ export default function GuardiansPage() {
   const totalBond = rows.reduce((s, r) => s + Number(r.bond_usdc), 0);
 
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-14">
       <Reveal>
         <PageIntro
-          kicker="the guardians"
+          kicker="The guardians"
           title="A bonded set of seven. The bond is the insurance."
           context="Guardians stake a bond to be drawable. When a committee is drawn, their pooled bond exceeds the action value — so a lie is always covered. g7 lied and was slashed to zero."
         />
       </Reveal>
 
-      <Reveal delay={0.08}>
+      {/* The insurance pool is the headline number */}
+      <Reveal delay={0.06}>
         <div>
-          <div className="flex items-center justify-between mb-4">
-            <span className="text-[11px] font-medium uppercase tracking-wider text-zinc-500">
-              guardian set · bonds = insurance pool {usdc(String(totalBond))}
+          <Label>pooled bond · insurance</Label>
+          <div className="flex items-baseline gap-3 mt-2">
+            <span className="text-5xl sm:text-6xl font-semibold font-mono tabular-nums text-white tracking-tight">
+              {usdc(String(totalBond))}
             </span>
             <LiveIndicator source={g.source} loading={g.loading} />
           </div>
+        </div>
+      </Reveal>
+
+      <Reveal delay={0.1}>
+        <div className="border-t border-edge pt-10">
+          <Label className="mb-5">guardian set</Label>
           {g.error && (
-            <div className="mb-4">
+            <div className="mb-5">
               <ErrorBanner message={g.error} />
             </div>
           )}
           {g.loading ? (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="flex flex-col gap-3">
               {[0, 1, 2].map((i) => (
-                <CardSkeleton key={i} rows={2} />
+                <Skeleton key={i} className="h-10 w-full" />
               ))}
             </div>
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="divide-y divide-edge">
               {rows.map((r) => {
                 const isSlashed = r.status === "Slashed";
                 return (
                   <div
                     key={r.id}
-                    className={
-                      "rounded-xl border p-4 " +
-                      (isSlashed
-                        ? "border-danger/35 bg-danger/[0.04]"
-                        : "border-white/[0.06] bg-white/[0.02]")
-                    }
+                    className="flex flex-wrap items-center gap-x-6 gap-y-2 py-3.5"
                   >
-                    <div className="flex items-center justify-between mb-3">
-                      <span
-                        className={
-                          "flex h-8 w-8 items-center justify-center rounded-lg border font-mono text-xs font-semibold " +
-                          (isSlashed
-                            ? "border-danger/30 bg-danger/10 text-danger"
-                            : "border-near/25 bg-near/10 text-near")
-                        }
-                      >
+                    <div className="flex items-center gap-2.5 w-28">
+                      <Dot tone={isSlashed ? "danger" : "near"} />
+                      <span className="font-mono text-sm text-white">
                         {r.id}
                       </span>
-                      {isSlashed ? (
-                        <StatusBadge status="Slashed" />
-                      ) : (
-                        <StatusBadge status="Active" />
-                      )}
-                    </div>
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-zinc-500">bond</span>
                       <span
                         className={
-                          "font-mono " + (isSlashed ? "text-danger" : "text-near")
+                          "text-xs " +
+                          (isSlashed ? "text-danger" : "text-zinc-500")
                         }
                       >
-                        {yoctoToNear(r.bond)} Ⓝ · {usdc(r.bond_usdc)}
+                        {isSlashed ? "slashed" : "active"}
                       </span>
                     </div>
-                    <div className="mt-2 flex items-center gap-1.5">
-                      <Cpu className="h-3 w-3 text-zinc-600 shrink-0" />
+                    <span
+                      className={
+                        "font-mono text-sm " +
+                        (isSlashed ? "text-danger" : "text-zinc-300")
+                      }
+                    >
+                      {yoctoToNear(r.bond)} Ⓝ · {usdc(r.bond_usdc)}
+                    </span>
+                    <div className="ml-auto">
                       <Copyable
                         value={r.wasm_sha256}
                         display={shortHash(r.wasm_sha256, 10, 6)}
@@ -140,6 +137,7 @@ export default function GuardiansPage() {
           </p>
         </Details>
       </Reveal>
+
     </div>
   );
 }

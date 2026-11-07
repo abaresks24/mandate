@@ -1,5 +1,5 @@
 import { ReasonCode } from "@/lib/types";
-import { Badge } from "./ui";
+import { cn } from "@/lib/cn";
 
 const GOOD: ReasonCode[] = [
   "PRICE_OK",
@@ -8,13 +8,16 @@ const GOOD: ReasonCode[] = [
   "CROSSCHAIN_STATE_OK",
 ];
 
-export function ReasonCodeBadges({ codes }: { codes: ReasonCode[] }) {
+export function ReasonCodes({ codes }: { codes: ReasonCode[] }) {
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div className="flex flex-wrap gap-x-3 gap-y-1 font-mono text-[11px]">
       {codes.map((c) => (
-        <Badge key={c} tone={GOOD.includes(c) ? "ok" : "danger"}>
-          <span className="font-mono text-[10px]">{c}</span>
-        </Badge>
+        <span
+          key={c}
+          className={cn(GOOD.includes(c) ? "text-zinc-400" : "text-danger")}
+        >
+          {c}
+        </span>
       ))}
     </div>
   );

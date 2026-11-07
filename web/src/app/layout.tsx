@@ -34,7 +34,6 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable} dark`}>
       <body className="font-sans min-h-screen flex flex-col">
-        <div className="app-backdrop" aria-hidden />
         <Nav />
         <div className="w-full max-w-4xl mx-auto px-5 sm:px-6 py-8 sm:py-12 flex-1">
           <main className="min-w-0">{children}</main>
