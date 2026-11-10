@@ -41,7 +41,21 @@ export const NEAR_CONFIG = {
     "coordinator.mandate-arthur.testnet",
   vaultId:
     process.env.NEXT_PUBLIC_VAULT_ID ?? "demo.vaults.mandate-arthur.testnet",
+  registryId:
+    process.env.NEXT_PUBLIC_REGISTRY_ID ?? "registry.mandate-arthur.testnet",
 };
+
+// The deployed mandate registry. Users register their own mandate under their
+// account with a wallet-signed, payable call (see lib/registry.ts).
+export const REGISTRY_ID = NEAR_CONFIG.registryId;
+
+// Exact on-chain shape returned by view_my_mandate (or null when absent).
+export interface MandateRecord {
+  owner: string;
+  mandate_json: string;
+  label: string;
+  registered_at_ns: number;
+}
 
 // Cross-chain landing proof — real MPC-derived EVM address + mined Sepolia tx.
 export const CROSSCHAIN = {
@@ -183,6 +197,20 @@ export const live = {
   // All seven registered guardians with their USDC bonds, in parallel.
   async allGuardians(): Promise<GuardianRow[]> {
     return Promise.all(GUARDIAN_IDS.map((id) => this.guardianRow(id)));
+  },
+
+  // --- mandate registry (registry.mandate-arthur.testnet) ---
+
+  // The caller's own on-chain mandate record, or null if they never registered.
+  async myMandate(account: string): Promise<MandateRecord | null> {
+    return viewCall<MandateRecord | null>(REGISTRY_ID, "view_my_mandate", {
+      account,
+    });
+  },
+
+  // Distinct accounts that have registered a mandate.
+  async registeredCount(): Promise<number> {
+    return viewCall<number>(REGISTRY_ID, "view_count", {});
   },
 };
 

@@ -3,8 +3,10 @@
 import { useState } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/button";
+import Link from "next/link";
 import { useWallet } from "@/components/wallet/WalletProvider";
 import { CROSSCHAIN } from "@/lib/near";
+import { registerMandate, txExplorerUrl } from "@/lib/registry";
 import type {
   Allocation,
   ProposedStrategy,
@@ -493,8 +495,42 @@ function DiscussPanel(props: {
   );
 }
 
+function shortLabel(summary: string): string {
+  const s = summary.trim().replace(/\s+/g, " ");
+  return s.length <= 96 ? s : `${s.slice(0, 93)}…`;
+}
+
+type LaunchState =
+  | { phase: "idle" }
+  | { phase: "signing" }
+  | { phase: "done"; hash: string | null }
+  | { phase: "error"; message: string };
+
 function LaunchPanel({ strategy }: { strategy: ProposedStrategy }) {
-  const { accountId, signIn } = useWallet();
+  const { accountId, signIn, signAndSendTransaction } = useWallet();
+  const [state, setState] = useState<LaunchState>({ phase: "idle" });
+
+  async function onDeploy() {
+    if (!accountId) return;
+    setState({ phase: "signing" });
+    try {
+      const mandate_json = JSON.stringify(strategy.mandate);
+      const label = shortLabel(strategy.summary);
+      const { hash } = await registerMandate(
+        signAndSendTransaction,
+        accountId,
+        { mandate_json, label },
+      );
+      setState({ phase: "done", hash });
+    } catch (err) {
+      // Wallet-selector surfaces user rejection as an Error; show it plainly.
+      const raw = err instanceof Error ? err.message : String(err);
+      const message = /reject|cancel|denied/i.test(raw)
+        ? "Transaction rejected in your wallet — nothing was registered."
+        : `Could not register the mandate: ${raw}`;
+      setState({ phase: "error", message });
+    }
+  }
 
   return (
     <div className="mt-8 border-t border-hairline pt-8">
@@ -503,9 +539,10 @@ function LaunchPanel({ strategy }: { strategy: ProposedStrategy }) {
       </h3>
 
       <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink">
-        Launching sets an <span className="font-medium">on-chain mandate</span> — the rules
-        the vault enforces. The agent can only ever propose moves inside it; anything outside
-        the mandate is rejected on-chain, before it can run.
+        Launching registers an <span className="font-medium">on-chain mandate</span> — the rules
+        the vault enforces — with a real, wallet-signed transaction. The agent can only ever
+        propose moves inside it; anything outside the mandate is rejected on-chain, before it
+        can run.
       </p>
 
       {/* Mandate summary */}
@@ -572,39 +609,70 @@ function LaunchPanel({ strategy }: { strategy: ProposedStrategy }) {
         </a>
       </div>
 
-      {/* CTA — honest about live vs stub */}
+      {/* CTA — REAL wallet-signed on-chain registration */}
       <div className="mt-8 flex flex-col gap-3 border-t border-hairline pt-6">
-        {accountId ? (
-          <>
-            <Button
-              variant="primary"
-              size="lg"
-              className="self-start"
-              onClick={() =>
-                alert(
-                  "Next step: sign a set_mandate transaction on the vault contract with your connected wallet. " +
-                    "This funding + signing step is the remaining integration — the committee verification and " +
-                    "cross-chain execution mechanism it unlocks is already proven live on testnet.",
-                )
-              }
-            >
-              Deploy this mandate →
-            </Button>
-            <p className="text-xs leading-relaxed text-muted">
-              Connected as <span className="font-mono text-ink">{accountId}</span>. Deploying
-              writes the mandate to the vault and funds it — the signing step is the remaining
-              integration; everything downstream (committee verification, cross-chain execution) is
-              live on testnet.
-            </p>
-          </>
-        ) : (
+        {!accountId ? (
           <>
             <Button variant="primary" size="lg" className="self-start" onClick={signIn}>
               Connect wallet to deploy
             </Button>
             <p className="text-xs leading-relaxed text-muted">
-              Connect a NEAR wallet to sign the mandate. Nothing is deployed or funded until you
-              explicitly sign — this flow does not open a position on your behalf.
+              Connect a NEAR wallet to sign the mandate. Nothing is registered until you
+              explicitly sign the transaction in your wallet.
+            </p>
+          </>
+        ) : state.phase === "done" ? (
+          <div className="rounded-lg border border-near/40 bg-near/5 p-5">
+            <div className="flex items-center gap-2 text-sm font-medium text-ink">
+              <span className="h-1.5 w-1.5 rounded-full bg-near" aria-hidden />
+              Mandate registered on-chain
+            </div>
+            <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
+              Your mandate is now recorded under{" "}
+              <span className="font-mono text-ink">{accountId}</span> on the registry
+              contract. This write is real and wallet-signed.
+            </p>
+            <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
+              {state.hash && (
+                <a
+                  href={txExplorerUrl(state.hash)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 font-mono text-xs text-muted hover:text-ink"
+                >
+                  {state.hash.slice(0, 10)}…{state.hash.slice(-8)}
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                </a>
+              )}
+              <Link
+                href="/app/portfolio"
+                className="text-sm font-medium text-ink underline-offset-4 hover:underline"
+              >
+                View in Portfolio →
+              </Link>
+            </div>
+          </div>
+        ) : (
+          <>
+            <Button
+              variant="primary"
+              size="lg"
+              className="self-start"
+              disabled={state.phase === "signing"}
+              onClick={onDeploy}
+            >
+              {state.phase === "signing" ? "Confirm in your wallet…" : "Deploy this mandate →"}
+            </Button>
+            {state.phase === "error" && (
+              <p className="text-xs leading-relaxed text-danger">{state.message}</p>
+            )}
+            <p className="text-xs leading-relaxed text-muted">
+              Connected as <span className="font-mono text-ink">{accountId}</span>. Deploying
+              signs a real <span className="font-mono">register_mandate</span> transaction
+              (0.01 NEAR attached) that records this mandate on-chain under your account.
+              Funding and deploying the per-mandate vault is the documented next step, proven
+              via the CLI scripts; everything downstream (committee verification, cross-chain
+              execution) is already live on testnet.
             </p>
           </>
         )}

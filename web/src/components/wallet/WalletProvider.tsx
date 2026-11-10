@@ -18,6 +18,23 @@ import { NEAR_CONFIG } from "@/lib/near";
 
 type Network = "testnet" | "mainnet";
 
+// A single NEAR FunctionCall action, in the shape wallet-selector expects.
+export interface FunctionCallAction {
+  type: "FunctionCall";
+  params: {
+    methodName: string;
+    args: Record<string, unknown>;
+    gas: string;
+    deposit: string;
+  };
+}
+
+// Minimal outcome we read back — the final tx hash lives at transaction.hash.
+export interface SignedTxOutcome {
+  transaction?: { hash?: string };
+  transaction_outcome?: { id?: string };
+}
+
 interface WalletContextValue {
   accountId: string | null;
   connecting: boolean;
@@ -25,6 +42,12 @@ interface WalletContextValue {
   isStub: boolean;
   signIn: () => void;
   signOut: () => void;
+  // Wallet-signed call. Throws if no real wallet is connected (stub mode) or if
+  // the user rejects. Returns the raw outcome (tx hash under transaction.hash).
+  signAndSendTransaction: (opts: {
+    receiverId: string;
+    actions: FunctionCallAction[];
+  }) => Promise<SignedTxOutcome>;
 }
 
 const WalletContext = createContext<WalletContextValue | null>(null);
@@ -39,7 +62,13 @@ type Selector = {
     getState: () => { accounts: Array<{ accountId: string; active: boolean }> };
     observable: { subscribe: (fn: () => void) => { unsubscribe?: () => void } };
   };
-  wallet: () => Promise<{ signOut: () => Promise<void> }>;
+  wallet: () => Promise<{
+    signOut: () => Promise<void>;
+    signAndSendTransaction: (opts: {
+      receiverId: string;
+      actions: FunctionCallAction[];
+    }) => Promise<SignedTxOutcome>;
+  }>;
 };
 type Modal = { show: () => void };
 type Subscription = { unsubscribe?: () => void };
@@ -135,9 +164,33 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setAccountId(null);
   }, [isStub]);
 
+  const signAndSendTransaction = useCallback(
+    async (opts: {
+      receiverId: string;
+      actions: FunctionCallAction[];
+    }): Promise<SignedTxOutcome> => {
+      if (isStub || !selectorRef.current) {
+        throw new Error(
+          "No NEAR wallet connected — connect a real testnet wallet to sign on-chain."
+        );
+      }
+      const wallet = await selectorRef.current.wallet();
+      return wallet.signAndSendTransaction(opts);
+    },
+    [isStub]
+  );
+
   return (
     <WalletContext.Provider
-      value={{ accountId, connecting, ready, isStub, signIn, signOut }}
+      value={{
+        accountId,
+        connecting,
+        ready,
+        isStub,
+        signIn,
+        signOut,
+        signAndSendTransaction,
+      }}
     >
       {children}
     </WalletContext.Provider>

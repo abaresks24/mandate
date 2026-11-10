@@ -1,0 +1,12 @@
+[package]
+name = "registry"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+description = "MANDATE Mandate Registry — users register their AI-proposed mandate on-chain (wallet-signed)"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+near-sdk = "5.30.0"
