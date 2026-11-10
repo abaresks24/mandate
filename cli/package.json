@@ -1,0 +1,16 @@
+{
+  "name": "mandate-cli",
+  "version": "0.1.0",
+  "description": "MANDATE — use the protocol from your terminal (AI strategy proposals + on-chain reads + wallet-signed mandate registration)",
+  "type": "module",
+  "bin": {
+    "mandate": "src/index.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "license": "MIT"
+}

@@ -11,6 +11,21 @@ Hackathon "Build Beyond Boundaries" (track: AI Security & Defense).
 **Live demo:** https://mandate-near-nine.vercel.app (reads the live testnet
 contracts) · **Repo:** https://github.com/abaresks24/mandate
 
+## Use it from your terminal (CLI)
+
+The protocol is usable programmatically — same AI proposal + on-chain pipeline, from a shell. No install, no API key (AI calls go through the live endpoint; reads hit testnet RPC directly):
+
+```bash
+node cli/src/index.js propose "5000 USDC, around 8%, low risk"   # AI-proposed strategy + risk breakdown
+node cli/src/index.js guardians                                  # guardian roster, bonds, slashings (g7 = SLASHED)
+node cli/src/index.js committee a2                               # a committee draw + tally (a2 = 1/3, BLOCKED)
+node cli/src/index.js portfolio <account.testnet>               # a user's on-chain mandate + demo vault
+node cli/src/index.js proof                                      # the live cross-chain Sepolia proof
+node cli/src/index.js register "USDC ~7%" --account you.testnet  # propose + sign register_mandate (needs near-cli-rs)
+```
+
+`register` signs a real on-chain `register_mandate` transaction via your `near-cli-rs` keychain. Everything else is read-only and needs no account.
+
 ## The thesis
 
 Everything verifiable on-chain is decided by the contract. The only thing left
