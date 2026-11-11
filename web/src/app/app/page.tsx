@@ -135,17 +135,55 @@ type UniverseRow = {
   apyBps: number;
   tvlUsd: number;
   risk: string;
+  riskScore: number;
   live: boolean;
 };
+
+type SortKey = "apyBps" | "tvlUsd" | "riskScore";
 
 function tvlShort(n: number): string {
   return n >= 1e9 ? `$${(n / 1e9).toFixed(1)}B` : `$${Math.max(1, Math.round(n / 1e6))}M`;
 }
 
+function FilterRow({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: string[];
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
+      <span className="text-xs uppercase tracking-wider text-muted">{label}</span>
+      {options.map((o) => (
+        <button
+          key={o}
+          type="button"
+          onClick={() => onChange(o)}
+          className={
+            value === o
+              ? "font-medium text-ink underline underline-offset-4 decoration-near"
+              : "text-muted transition-colors hover:text-ink"
+          }
+        >
+          {o}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function StrategyTable() {
   const [rows, setRows] = useState<UniverseRow[] | null>(null);
+  const [chain, setChain] = useState("All");
+  const [category, setCategory] = useState("All");
+  const [sortKey, setSortKey] = useState<SortKey>("tvlUsd");
+  const [desc, setDesc] = useState(true);
 
-  // The live market universe from DefiLlama, refreshed every 60s.
   useEffect(() => {
     let alive = true;
     const load = () =>
@@ -175,48 +213,86 @@ function StrategyTable() {
     );
   }
 
+  const chains = ["All", ...Array.from(new Set(rows.map((r) => r.chain)))];
+  const categories = ["All", ...Array.from(new Set(rows.map((r) => r.category)))];
+
+  const filtered = rows.filter(
+    (r) => (chain === "All" || r.chain === chain) && (category === "All" || r.category === category),
+  );
+  const sorted = [...filtered].sort((a, b) => {
+    const d = a[sortKey] - b[sortKey];
+    return desc ? -d : d;
+  });
+
+  const toggleSort = (k: SortKey) => {
+    if (k === sortKey) setDesc((v) => !v);
+    else {
+      setSortKey(k);
+      setDesc(true);
+    }
+  };
+  const caret = (k: SortKey) => (sortKey === k ? (desc ? " ↓" : " ↑") : "");
+
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-left">
-        <thead>
-          <tr className="border-b border-hairline text-xs font-medium uppercase tracking-wider text-muted">
-            <th className="py-3 pr-4 font-medium">Protocol</th>
-            <th className="py-3 pr-4 font-medium">Market</th>
-            <th className="py-3 pr-4 font-medium">Chain</th>
-            <th className="py-3 pr-4 font-medium">Category</th>
-            <th className="py-3 pr-4 font-medium">Exposure</th>
-            <th className="py-3 pr-4 text-right font-medium">APY</th>
-            <th className="py-3 pr-4 text-right font-medium">TVL</th>
-            <th className="py-3 text-right font-medium">Risk</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((s, i) => (
-            <tr key={s.name + s.market + s.chain + i} className="border-b border-hairline last:border-0">
-              <td className="py-3 pr-4 font-medium text-ink">
-                {s.name}
-                {s.live && (
-                  <span className="ml-2 text-xs font-normal text-muted">live</span>
-                )}
-              </td>
-              <td className="py-3 pr-4 font-mono text-xs text-muted">{s.market}</td>
-              <td className="py-3 pr-4 text-sm text-muted">{s.chain}</td>
-              <td className="py-3 pr-4 text-sm text-muted">{s.category}</td>
-              <td className="py-3 pr-4 text-sm uppercase text-muted">{s.exposure}</td>
-              <td className="py-3 pr-4 text-right font-mono tabular-nums text-ink">
-                {(s.apyBps / 100).toFixed(2)}%
-              </td>
-              <td className="py-3 pr-4 text-right font-mono tabular-nums text-muted">
-                {tvlShort(s.tvlUsd)}
-              </td>
-              <td className="py-3 text-right text-sm text-muted">{s.risk}</td>
+    <div>
+      <div className="mb-5 flex flex-col gap-2">
+        <FilterRow label="Chain" options={chains} value={chain} onChange={setChain} />
+        <FilterRow label="Category" options={categories} value={category} onChange={setCategory} />
+      </div>
+
+      <div className="overflow-x-auto">
+        <table className="w-full border-collapse text-left">
+          <thead>
+            <tr className="border-b border-hairline text-xs font-medium uppercase tracking-wider text-muted">
+              <th className="py-3 pr-4 font-medium">Protocol</th>
+              <th className="py-3 pr-4 font-medium">Market</th>
+              <th className="py-3 pr-4 font-medium">Chain</th>
+              <th className="py-3 pr-4 font-medium">Category</th>
+              <th className="py-3 pr-4 font-medium">Exposure</th>
+              <th className="py-3 pr-4 text-right font-medium">
+                <button type="button" onClick={() => toggleSort("apyBps")} className="uppercase tracking-wider hover:text-ink">
+                  APY{caret("apyBps")}
+                </button>
+              </th>
+              <th className="py-3 pr-4 text-right font-medium">
+                <button type="button" onClick={() => toggleSort("tvlUsd")} className="uppercase tracking-wider hover:text-ink">
+                  TVL{caret("tvlUsd")}
+                </button>
+              </th>
+              <th className="py-3 text-right font-medium">
+                <button type="button" onClick={() => toggleSort("riskScore")} className="uppercase tracking-wider hover:text-ink">
+                  Risk{caret("riskScore")}
+                </button>
+              </th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {sorted.map((s, i) => (
+              <tr key={s.name + s.market + s.chain + i} className="border-b border-hairline last:border-0">
+                <td className="py-3 pr-4 font-medium text-ink">
+                  {s.name}
+                  {s.live && <span className="ml-2 text-xs font-normal text-muted">live</span>}
+                </td>
+                <td className="py-3 pr-4 font-mono text-xs text-muted">{s.market}</td>
+                <td className="py-3 pr-4 text-sm text-muted">{s.chain}</td>
+                <td className="py-3 pr-4 text-sm text-muted">{s.category}</td>
+                <td className="py-3 pr-4 text-sm uppercase text-muted">{s.exposure}</td>
+                <td className="py-3 pr-4 text-right font-mono tabular-nums text-ink">
+                  {(s.apyBps / 100).toFixed(2)}%
+                </td>
+                <td className="py-3 pr-4 text-right font-mono tabular-nums text-muted">
+                  {tvlShort(s.tvlUsd)}
+                </td>
+                <td className="py-3 text-right text-sm text-muted">{s.risk}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
       <p className="mt-3 text-xs text-muted">
-        {rows.length} live markets from DefiLlama, refreshed every minute. A protocol
-        like Morpho runs many markets — each row is a specific named market.
+        {sorted.length} of {rows.length} live markets from DefiLlama, refreshed every
+        minute. A protocol like Morpho runs many markets — each row is a specific named market.
       </p>
     </div>
   );
