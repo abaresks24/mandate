@@ -16,6 +16,7 @@ contracts) · **Repo:** https://github.com/abaresks24/yieldai
 The protocol is usable programmatically — same AI proposal + on-chain pipeline, from a shell. No install, no API key (AI calls go through the live endpoint; reads hit testnet RPC directly):
 
 ```bash
+node cli/src/index.js chat                                       # interactive: propose then refine in the terminal
 node cli/src/index.js propose "5000 USDC, around 8%, low risk"   # AI-proposed strategy + risk breakdown
 node cli/src/index.js guardians                                  # guardian roster, bonds, slashings (g7 = SLASHED)
 node cli/src/index.js committee a2                               # a committee draw + tally (a2 = 1/3, BLOCKED)

@@ -260,7 +260,8 @@ export default function Docs() {
                 on-chain pipeline from a shell, no install, no API key:
               </P>
               <Pre>
-{`node cli/src/index.js propose "5000 USDC, around 8%, low risk"
+{`node cli/src/index.js chat "5000 USDC, around 8%, low risk"   # interactive — refine in the terminal
+node cli/src/index.js propose "5000 USDC, around 8%, low risk"
 node cli/src/index.js guardians            # roster, bonds, slashings
 node cli/src/index.js committee a2         # a committee draw + tally
 node cli/src/index.js portfolio <acct>     # an account's on-chain mandate

@@ -11,6 +11,7 @@
 // agent or a human — the same proposal/verification pipeline, from a terminal.
 
 import { spawnSync } from "node:child_process";
+import { createInterface } from "node:readline";
 
 const API = process.env.MANDATE_API ?? "https://yieldai-fi.vercel.app";
 const RPC = process.env.NEAR_RPC ?? "https://rpc.testnet.near.org";
@@ -134,13 +135,9 @@ async function cmdRefine(brief, message) {
   printStrategy(data);
 }
 
-async function cmdRegister(brief, account) {
-  if (!brief || !account)
-    die('usage: mandate register "<brief>" --account <id.testnet>');
-  console.log(dim("proposing strategy…"));
-  const data = await postJson("/api/propose", { brief });
-  const s = printStrategy(data);
-  if (!s) die("cannot register a refused/invalid strategy");
+// Sign register_mandate for an already-proposed strategy. Returns true on success.
+// Does not exit the process (so it is safe to call from the interactive chat).
+function signRegister(s, account) {
   const mandate_json = JSON.stringify(s.mandate ?? {});
   const label = (s.summary ?? "mandate").slice(0, 60);
   console.log(h("Register on-chain (wallet-signed)"));
@@ -156,11 +153,110 @@ async function cmdRegister(brief, account) {
     ],
     { stdio: "inherit" }
   );
-  if (r.error && r.error.code === "ENOENT")
-    die("near-cli-rs not found. Install it: cargo install near-cli-rs");
-  if (r.status !== 0) die("registration transaction failed");
+  if (r.error && r.error.code === "ENOENT") {
+    console.log(red("near-cli-rs not found. Install it: cargo install near-cli-rs"));
+    return false;
+  }
+  if (r.status !== 0) {
+    console.log(red("registration transaction failed"));
+    return false;
+  }
   console.log(green("\n✓ mandate registered on-chain"));
   console.log(dim(`read it back: mandate portfolio ${account}`));
+  return true;
+}
+
+async function cmdRegister(brief, account) {
+  if (!brief || !account)
+    die('usage: mandate register "<brief>" --account <id.testnet>');
+  console.log(dim("proposing strategy…"));
+  const s = printStrategy(await postJson("/api/propose", { brief }));
+  if (!s) die("cannot register a refused/invalid strategy");
+  signRegister(s, account);
+}
+
+// Per-allocation detail (where the yield comes from, the venue's key risk).
+function printDetail(s) {
+  console.log(h("Strategy detail"));
+  for (const a of s.allocations ?? []) {
+    const mkt = a.apyMarket ? `${a.apyMarket} market (live)` : "indicative";
+    console.log(`${bold(a.label)} ${dim("· " + a.chain)} · ${a.category} · exposure:${a.exposure}`);
+    console.log(`  ${green((a.apyBps / 100).toFixed(2) + "%")} APY ${dim("(" + mkt + ")")} · risk ${a.riskScore}/100`);
+    if (a.sourceOfYield) console.log(dim(`  yield: ${a.sourceOfYield}`));
+    if (a.keyRisk) console.log(dim(`  key risk: ${a.keyRisk}`));
+  }
+  if (s.riskBreakdown) console.log(dim(`\n${s.riskBreakdown}`));
+}
+
+// Interactive session: propose, then talk about the strategy in the terminal.
+async function cmdChat(initialBrief) {
+  const rl = createInterface({ input: process.stdin, output: process.stdout });
+  let closed = false;
+  rl.on("close", () => { closed = true; });
+  // Returns null when stdin is closed (EOF / piped input ends) — treated as quit.
+  const ask = (q) =>
+    new Promise((res) => {
+      if (closed) return res(null);
+      try { rl.question(q, res); } catch { res(null); }
+    });
+  console.log(h("YieldAI — interactive"));
+  console.log(dim("Describe what you want, then refine in plain language."));
+  console.log(dim("Commands: learn · register <account.testnet> · new · quit"));
+
+  let brief = (initialBrief || "").trim();
+  if (!brief) {
+    const b = await ask(bold("\nWhat do you want? "));
+    brief = (b ?? "").trim();
+  }
+  if (!brief) { rl.close(); return; }
+
+  console.log(dim("\nproposing…"));
+  let s = printStrategy(await postJson("/api/propose", { brief }));
+
+  for (;;) {
+    const raw = await ask(bold("\n› "));
+    if (raw == null) break; // stdin closed
+    const line = raw.trim();
+    if (!line) continue;
+    const [cmd, ...rest] = line.split(/\s+/);
+    const lc = cmd.toLowerCase();
+
+    if (["quit", "exit", "q"].includes(lc)) break;
+    if (lc === "help") {
+      console.log(dim("refine in plain language · learn · register <account.testnet> · new · quit"));
+      continue;
+    }
+    if (lc === "learn") {
+      if (s) printDetail(s);
+      else console.log(red("no strategy yet"));
+      continue;
+    }
+    if (lc === "new") {
+      const nbRaw = await ask(bold("New brief: "));
+      if (nbRaw == null) break;
+      const nb = nbRaw.trim();
+      if (!nb) continue;
+      brief = nb;
+      console.log(dim("proposing…"));
+      s = printStrategy(await postJson("/api/propose", { brief }));
+      continue;
+    }
+    if (lc === "register") {
+      const account = rest[0];
+      if (!account) { console.log(red("usage: register <account.testnet>")); continue; }
+      if (!s) { console.log(red("no strategy to register")); continue; }
+      signRegister(s, account);
+      continue;
+    }
+
+    // anything else = a refinement message
+    console.log(dim("refining…"));
+    const r = await postJson("/api/refine", { brief, priorStrategy: s ?? null, message: line });
+    s = printStrategy(r) ?? s;
+  }
+
+  rl.close();
+  console.log(dim("\nbye."));
 }
 
 async function cmdPortfolio(account) {
@@ -220,9 +316,12 @@ async function cmdProof() {
 function help() {
   console.log(`${bold("YieldAI")} — use the protocol from your terminal
 
-${bold("AI strategy")} ${dim("(via the live API — no key needed)")}
+${bold("Talk to it")} ${dim("(interactive — propose, then refine in the terminal)")}
+  mandate chat ["<brief>"]                  start an interactive session; refine by typing
+
+${bold("AI strategy")} ${dim("(one-shot, via the live API — no key needed)")}
   mandate propose "<brief>"                 propose a strategy for a plain-language brief
-  mandate refine  "<brief>" "<change>"      refine a proposal
+  mandate refine  "<brief>" "<change>"      refine a proposal once
   mandate register "<brief>" --account <id> propose + sign register_mandate (needs near-cli-rs)
 
 ${bold("On-chain reads")} ${dim("(NEAR testnet, no account needed)")}
@@ -244,6 +343,7 @@ const account = accIdx >= 0 ? rest[accIdx + 1] : undefined;
 const positional = rest.filter((a, i) => a !== "--account" && rest[i - 1] !== "--account");
 
 const run = {
+  chat: () => cmdChat(positional[0]),
   propose: () => cmdPropose(positional[0]),
   refine: () => cmdRefine(positional[0], positional[1]),
   register: () => cmdRegister(positional[0], account),
