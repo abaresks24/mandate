@@ -10,9 +10,9 @@ export default function Landing() {
     <div className="flex min-h-screen flex-col">
       <TopBar />
 
-      {/* HERO — fills the first viewport, airy, left-aligned, massive type */}
-      <section className="relative flex flex-1 items-center">
-        <div className="mx-auto w-full max-w-6xl px-5 pb-24 pt-24 sm:px-8 sm:pt-32">
+      {/* HERO — explicitly fills the viewport so nothing below peeks on arrival */}
+      <section className="flex min-h-[calc(100svh-4rem)] items-center">
+        <div className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8">
           <h1 className="display max-w-4xl text-5xl font-semibold leading-[1.03] text-ink sm:text-6xl lg:text-7xl">
             Earn yield you can
             <br />
@@ -46,7 +46,7 @@ export default function Landing() {
           <p className="mb-6 text-sm font-medium uppercase tracking-wider text-muted">
             What it is
           </p>
-          <h2 className="display max-w-3xl text-3xl font-semibold leading-tight text-ink sm:text-4xl lg:text-5xl">
+          <h2 className="display max-w-3xl text-3xl font-semibold leading-tight text-ink sm:text-4xl">
             An AI yield agent whose power is bounded on-chain.
           </h2>
           <div className="mt-14 grid gap-10 sm:grid-cols-3">
