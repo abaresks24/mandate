@@ -6,6 +6,8 @@ import { MANDATE } from "@/mock/mandate";
 import { GUARDIANS } from "@/mock/guardians";
 import { bps } from "@/lib/format";
 import type { Mandate, GuardianRow } from "@/lib/types";
+import { CATALOGUE, CATALOGUE_KEYS } from "@/lib/earn/catalogue";
+import { scoreProtocol, riskLabel } from "@/lib/earn/risk";
 
 // USDC bonds are 6-dp fixed strings; sum into a human figure.
 function sumBondUsdc(rows: GuardianRow[]): number {
@@ -84,18 +86,19 @@ export default function Overview() {
         />
       </section>
 
-      {/* Most-used strategies */}
+      {/* Strategy universe */}
       <section>
         <div className="mb-6">
           <h2 className="text-xl font-semibold tracking-tight text-ink">
-            Most-used strategies
+            Strategy universe
           </h2>
-          <p className="mt-1 text-sm text-muted">
-            Where the agent puts stablecoins to work.
+          <p className="mt-1 max-w-2xl text-sm text-muted">
+            The agent composes across {CATALOGUE_KEYS.length} venues — stablecoin
+            lending, RWA, staking, BTC, LP and more — to fit each brief. A sample:
           </p>
         </div>
 
-        <StrategyTable targetApy={bps(m.target_apy_bps)} />
+        <StrategyTable />
       </section>
     </div>
   );
@@ -123,42 +126,30 @@ function Metric({
   );
 }
 
-type Strategy = {
-  name: string;
-  chain: string;
-  source: string;
-  apy: string;
-  risk: string;
-  tvl: string;
-};
+// A representative slice of the catalogue, spanning the risk spectrum.
+const SAMPLE_KEYS = [
+  "rhea",
+  "morpho-sepolia",
+  "aave",
+  "sdai",
+  "ethena-susde",
+  "lido-steth",
+  "lombard-lbtc",
+  "hyper-usdc",
+];
 
-function StrategyTable({ targetApy }: { targetApy: string }) {
-  const strategies: Strategy[] = [
-    {
-      name: "USDC lending on Rhea",
-      chain: "NEAR",
-      source: "Lending supply rate",
-      apy: "7.40%",
-      risk: "Low",
-      tvl: "$3.0M",
-    },
-    {
-      name: "USDC on Morpho",
-      chain: "Ethereum (via Chain Signatures)",
-      source: "Morpho market supply",
-      apy: "9.10%",
-      risk: "Medium",
-      tvl: "$2.0M",
-    },
-    {
-      name: "Demo mandate target",
-      chain: "NEAR",
-      source: "Blended, on-chain mandate",
-      apy: targetApy,
-      risk: "Low",
-      tvl: "—",
-    },
-  ];
+function StrategyTable() {
+  const rows = SAMPLE_KEYS.map((k) => CATALOGUE[k])
+    .filter(Boolean)
+    .map((e) => ({
+      name: e.displayName,
+      chain: e.chainLabel,
+      source: e.category,
+      exposure: e.asset,
+      apy: `${(e.default_apy_bps / 100).toFixed(2)}%`,
+      risk: riskLabel(scoreProtocol(e.risk)),
+      live: e.live,
+    }));
 
   return (
     <div className="overflow-x-auto">
@@ -168,29 +159,27 @@ function StrategyTable({ targetApy }: { targetApy: string }) {
             <th className="py-3 pr-4 font-medium">Strategy</th>
             <th className="py-3 pr-4 font-medium">Chain</th>
             <th className="py-3 pr-4 font-medium">Source of yield</th>
-            <th className="py-3 pr-4 text-right font-medium">Target APY</th>
-            <th className="py-3 pr-4 text-right font-medium">Risk</th>
-            <th className="py-3 text-right font-medium">TVL</th>
+            <th className="py-3 pr-4 font-medium">Exposure</th>
+            <th className="py-3 pr-4 text-right font-medium">APY</th>
+            <th className="py-3 text-right font-medium">Risk</th>
           </tr>
         </thead>
         <tbody>
-          {strategies.map((s) => (
-            <tr
-              key={s.name}
-              className="border-b border-hairline last:border-0"
-            >
-              <td className="py-4 pr-4 font-medium text-ink">{s.name}</td>
+          {rows.map((s) => (
+            <tr key={s.name + s.chain} className="border-b border-hairline last:border-0">
+              <td className="py-4 pr-4 font-medium text-ink">
+                {s.name}
+                {s.live && (
+                  <span className="ml-2 text-xs font-normal text-muted">live</span>
+                )}
+              </td>
               <td className="py-4 pr-4 text-sm text-muted">{s.chain}</td>
               <td className="py-4 pr-4 text-sm text-muted">{s.source}</td>
+              <td className="py-4 pr-4 text-sm uppercase text-muted">{s.exposure}</td>
               <td className="py-4 pr-4 text-right font-mono tabular-nums text-ink">
                 {s.apy}
               </td>
-              <td className="py-4 pr-4 text-right text-sm text-muted">
-                {s.risk}
-              </td>
-              <td className="py-4 text-right font-mono text-sm tabular-nums text-muted">
-                {s.tvl}
-              </td>
+              <td className="py-4 text-right text-sm text-muted">{s.risk}</td>
             </tr>
           ))}
         </tbody>
