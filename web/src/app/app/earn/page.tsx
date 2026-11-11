@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { Button } from "@/components/button";
 import Link from "next/link";
@@ -241,6 +241,25 @@ function ProposalView(props: {
 }) {
   const { strategy: s } = props;
 
+  const discussRef = useRef<HTMLDivElement>(null);
+  const launchRef = useRef<HTMLDivElement>(null);
+
+  // When a panel opens, bring it into view (accounts for the sticky top bar).
+  useEffect(() => {
+    if (props.showDiscuss) {
+      requestAnimationFrame(() =>
+        discussRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      );
+    }
+  }, [props.showDiscuss]);
+  useEffect(() => {
+    if (props.showLaunch) {
+      requestAnimationFrame(() =>
+        launchRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      );
+    }
+  }, [props.showLaunch]);
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-2 text-sm text-muted">
@@ -322,15 +341,21 @@ function ProposalView(props: {
 
         {props.showDetail && <DetailPanel strategy={s} />}
         {props.showDiscuss && (
-          <DiscussPanel
-            thread={props.thread}
-            refineMsg={props.refineMsg}
-            setRefineMsg={props.setRefineMsg}
-            refining={props.refining}
-            onRefine={props.onRefine}
-          />
+          <div ref={discussRef} className="scroll-mt-24">
+            <DiscussPanel
+              thread={props.thread}
+              refineMsg={props.refineMsg}
+              setRefineMsg={props.setRefineMsg}
+              refining={props.refining}
+              onRefine={props.onRefine}
+            />
+          </div>
         )}
-        {props.showLaunch && <LaunchPanel strategy={s} />}
+        {props.showLaunch && (
+          <div ref={launchRef} className="scroll-mt-24">
+            <LaunchPanel strategy={s} />
+          </div>
+        )}
       </div>
     </div>
   );
