@@ -95,6 +95,7 @@ const CANON_CHAIN: Record<string, string> = {
 };
 
 const MIN_TVL = 5_000_000; // ignore dust / near-dead markets
+const MIN_APY = 0.3; // drop ~0% collateral-only markets (not a yield strategy)
 const MAX_APY = 150; // clamp transient LP spikes
 const PER_PROTOCOL = 4; // top-N markets per PROTOCOL (guarantees coverage)
 
@@ -156,7 +157,7 @@ function venueFromPool(p: LlamaPool): Venue | null {
   if (!CHAIN_LABEL[p.chain]) return null;
   if ((p.tvlUsd ?? 0) < MIN_TVL) return null;
   const apy = p.apy;
-  if (typeof apy !== "number" || apy <= 0 || apy > MAX_APY) return null;
+  if (typeof apy !== "number" || apy < MIN_APY || apy > MAX_APY) return null;
 
   const asset = inferAsset(p.symbol);
   return {
