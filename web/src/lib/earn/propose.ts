@@ -89,9 +89,10 @@ const LOW_RISK_CAP = 25;
 function catalogueBrief(): string {
   return CATALOGUE_KEYS.map((k) => {
     const e = CATALOGUE[k]!;
-    return `- "${k}" (${e.displayName} on ${e.chainLabel}): USDC ${e.risk.yield_source}, ~${(
+    const live = e.live ? "LIVE" : "roadmap";
+    return `- "${k}" — ${e.displayName} · ${e.chainLabel} · ${e.category} · exposure:${e.asset} · ~${(
       e.default_apy_bps / 100
-    ).toFixed(1)}% APY. ${e.sourceOfYield}`;
+    ).toFixed(1)}% APY · ${live}. ${e.sourceOfYield}`;
   }).join("\n");
 }
 
@@ -101,27 +102,36 @@ function systemPrompt(): string {
     "into a PROPOSED on-chain yield strategy. Respond ONLY with a JSON object.",
     "",
     "You do NOT compute risk scores — a separate deterministic module does that.",
-    "Your job: choose sane mandate parameters, pick allocations from the SUPPORTED",
-    "universe below, assign each a weight %, and write an honest human explanation.",
+    "Your job: read the brief, then DESIGN A STRATEGY that genuinely fits it by",
+    "picking a handful of venues from the universe below, assigning each a weight %,",
+    "and writing an honest human explanation. Respond ONLY with a JSON object.",
     "",
-    "SUPPORTED UNIVERSE (the only protocols that exist for you):",
+    "THE YIELD UNIVERSE (each line: key · venue · chain · category · exposure · APY · LIVE/roadmap):",
     catalogueBrief(),
     "",
-    "The universe is USDC lending only. There is NO BTC market, NO perps, NO LP.",
+    "DESIGN DIFFERENT STRATEGIES FOR DIFFERENT BRIEFS — do not default to one answer:",
+    "- Read the user's RISK APPETITE: conservative → blue-chip lending / RWA / savings",
+    "  (aave, sdai, ondo-usdy, rhea); balanced → add fixed-rate/delta-neutral (pendle,",
+    "  ethena-susde) or liquid staking; aggressive → LP, restaking, or incentivized",
+    "  vaults (ref-lp, uni-ethusdc, eigenlayer, hyper-usdc).",
+    "- Read ASSET-EXPOSURE wishes and HONOR them with the matching `exposure` tag:",
+    "  'BTC exposure' → lombard-lbtc / solv-btc; 'ETH' → lido-steth / eigenlayer;",
+    "  'NEAR' → linear / meta-pool; 'stablecoin / no volatility' → stay in stablecoin venues.",
+    "- Read CHAIN preferences (NEAR, Ethereum, Base, Arbitrum) and target APY.",
+    "- DIVERSIFY: typically 2-4 venues across categories, not always the same pair.",
+    "  Vary the mix so two different briefs yield visibly different strategies.",
     "",
-    "IMPORTANT — out-of-universe asks (e.g. 'I want ~30% BTC exposure'):",
-    "Do NOT refuse and do NOT silently fake a BTC position. Instead, propose the",
-    "CLOSEST sensible allocation within the supported USDC-lending protocols, and",
-    "use the `caveat` field to be explicit that direct BTC exposure is not something",
-    "YieldAI supports today — explain that the funds stay in USDC lending and the",
-    "user would need to take BTC exposure elsewhere. Be honest, never pretend.",
+    "HONESTY ABOUT EXECUTION: only venues marked LIVE (Rhea on NEAR, Morpho on",
+    "Ethereum) settle on testnet today; the rest are the broader universe (roadmap).",
+    "You MAY still include roadmap venues when they fit the brief — but if you do,",
+    "use the `caveat` field to say plainly which part is live today vs. on the roadmap.",
+    "Never claim a roadmap venue is already executing.",
     "",
     "REFUSE (realistic=false, give refusal_reason) ONLY for the impossible or",
     "self-contradictory: demanding high APY with zero/near-zero risk (the classic",
     "'40% APY, no risk' ask), or an empty/nonsense brief.",
     "",
-    "Weights must sum to about 100. Prefer Rhea (lower risk) for conservative,",
-    "low-risk briefs; include Morpho when the user accepts more risk for more yield.",
+    "Weights must sum to about 100.",
     "",
     "JSON shape:",
     "{",
@@ -277,19 +287,31 @@ export function assembleStrategy(parsed: LlmProposal): ProposeResult {
     committee_threshold_usdc: "0", // committee PERMANENT (SPEC default)
   };
 
+  const categories = Array.from(new Set(kept.map((a) => CATALOGUE[a.protocol!]!.category)));
   const riskBreakdown =
     `Blended portfolio risk is ${portfolioRisk}/100 (${riskLabel(portfolioRisk)}), ` +
-    `under your mandate cap of ${maxRisk}. Every allocation is USDC lending; the main ` +
-    `risk factors are smart-contract exposure and, for Morpho, dependence on an external ` +
-    `price oracle. The on-chain mandate hard-caps risk at ${maxRisk}, limits any single ` +
-    `protocol to ${mandate.max_share_per_protocol_bps / 100}% of the vault, and bounds ` +
+    `under your mandate cap of ${maxRisk}. This mix spans ${categories.join(", ")}; the main ` +
+    `risk drivers are smart-contract exposure, oracle dependence where present, and any asset-price ` +
+    `exposure you opted into. The on-chain mandate hard-caps risk at ${maxRisk}, limits any single ` +
+    `venue to ${mandate.max_share_per_protocol_bps / 100}% of the vault, and bounds ` +
     `loss to ${mandate.max_loss_bps / 100}%.`;
+
+  // Honest live-vs-roadmap note: only Rhea + Morpho settle on testnet today.
+  const roadmap = allocations.filter((al) => !CATALOGUE[al.protocol]!.live).map((al) => al.label);
+  const liveNote =
+    roadmap.length > 0
+      ? `Live on-chain execution today settles Rhea (NEAR) and Morpho (Ethereum); ` +
+        `${Array.from(new Set(roadmap)).join(", ")} ${roadmap.length === 1 ? "is" : "are"} in the ` +
+        `YieldAI strategy universe (execution on the roadmap).`
+      : "";
+  const llmCaveat = parsed.caveat?.trim();
+  const caveat = [llmCaveat, liveNote].filter(Boolean).join(" ") || undefined;
 
   const strategy: ProposedStrategy = {
     summary:
       parsed.summary?.trim() ||
-      `Targeting ~${(expectedApyBps / 100).toFixed(1)}% APY across ${allocations.length} USDC-lending allocation(s), risk-capped at ${maxRisk}/100.`,
-    caveat: parsed.caveat?.trim() || undefined,
+      `Targeting ~${(expectedApyBps / 100).toFixed(1)}% APY across ${allocations.length} allocation(s) (${categories.join(", ")}), risk-capped at ${maxRisk}/100.`,
+    caveat,
     expectedApyBps,
     riskLevel: riskLabel(portfolioRisk),
     allocations,
@@ -318,7 +340,7 @@ export async function proposeStrategy(brief: string, cfg?: LlmConfig): Promise<P
 
   let parsed: LlmProposal;
   try {
-    const raw = await chatJson(messages, config, { temperature: 0.1 });
+    const raw = await chatJson(messages, config, { temperature: 0.55 });
     parsed = JSON.parse(raw) as LlmProposal;
   } catch (err) {
     return {
@@ -374,7 +396,7 @@ export async function refineStrategy(
 
   let parsed: LlmProposal;
   try {
-    const raw = await chatJson(messages, config, { temperature: 0.1 });
+    const raw = await chatJson(messages, config, { temperature: 0.55 });
     parsed = JSON.parse(raw) as LlmProposal;
   } catch (err) {
     return {
