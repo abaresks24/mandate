@@ -241,5 +241,5 @@ mocked in the repo demo.
 - The agent's kill-switch *write* path from the web UI needs a browser wallet
   signer (Phase 2); the kill switch itself is proven live via CLI.
 
-See [PLAN.md](./PLAN.md) and [SPEC.md](./SPEC.md) for the build plan and the
-shared interface spec.
+See [SPEC.md](./SPEC.md) for the on-chain interface spec and
+[docs/DEMO_REPORT.md](./docs/DEMO_REPORT.md) for an end-to-end run with tx links.
