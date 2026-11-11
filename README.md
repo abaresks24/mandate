@@ -1,4 +1,4 @@
-# MANDATE
+# YieldAI
 
 **Confie ton argent à un agent IA — sans lui faire confiance.**
 *Hand your money to an AI agent — without trusting it.*

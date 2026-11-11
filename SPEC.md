@@ -1,4 +1,4 @@
-# MANDATE — Shared Interface Spec (the integration contract)
+# YieldAI — Shared Interface Spec (the integration contract)
 
 Every component builds against THIS file. If you need to change a signature, change it here first.
 

@@ -1,4 +1,4 @@
-# MANDATE — End-to-End Demo Report
+# YieldAI — End-to-End Demo Report
 
 A fresh user journey run on **NEAR testnet** (+ the protocol mechanism, live and
 on-chain). Every link below is independently verifiable.
