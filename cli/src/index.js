@@ -12,7 +12,7 @@
 
 import { spawnSync } from "node:child_process";
 
-const API = process.env.MANDATE_API ?? "https://yieldai-app.vercel.app";
+const API = process.env.MANDATE_API ?? "https://yieldai-fi.vercel.app";
 const RPC = process.env.NEAR_RPC ?? "https://rpc.testnet.near.org";
 const REGISTRY = process.env.MANDATE_REGISTRY ?? "registry.mandate-arthur.testnet";
 const COORDINATOR = process.env.MANDATE_COORDINATOR ?? "coordinator.mandate-arthur.testnet";

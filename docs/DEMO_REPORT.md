@@ -109,7 +109,7 @@ $ node cli/src/index.js proof
 | Vault (per-mandate, demo) | `demo.vaults.mandate-arthur.testnet` | https://testnet.nearblocks.io/address/demo.vaults.mandate-arthur.testnet |
 | Mandate Registry | `registry.mandate-arthur.testnet` | https://testnet.nearblocks.io/address/registry.mandate-arthur.testnet |
 
-Web app: https://yieldai-app.vercel.app · Repo: https://github.com/abaresks24/yieldai
+Web app: https://yieldai-fi.vercel.app · Repo: https://github.com/abaresks24/yieldai
 
 ---
 
