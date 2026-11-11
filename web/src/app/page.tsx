@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { TopBar } from "@/components/TopBar";
 import { Button } from "@/components/button";
-import { LogoGlyph } from "@/components/brand";
+import { Wordmark } from "@/components/brand";
 
 const DOCS_URL = "https://github.com/abaresks24/mandate";
 
@@ -163,10 +163,7 @@ export default function Landing() {
       <footer className="border-t border-hairline bg-mist">
         <div className="mx-auto flex max-w-6xl flex-col gap-6 px-5 py-12 sm:flex-row sm:items-center sm:justify-between sm:px-8">
           <div className="flex items-center gap-2">
-            <LogoGlyph className="h-5 w-5" />
-            <span className="text-sm font-semibold tracking-tight text-ink">
-              MANDATE
-            </span>
+            <Wordmark />
             <span className="text-sm text-muted">· Built on NEAR</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-muted">

@@ -1,4 +1,4 @@
-// The protocol universe MANDATE actually supports. Ported from
+// The protocol universe YieldAI actually supports. Ported from
 // agent/src/mandate.ts DEFAULT_CATALOGUE. Risk facts here feed the
 // DETERMINISTIC risk module — the LLM never sees or sets a score.
 

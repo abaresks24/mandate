@@ -1,27 +1,18 @@
-// Light-theme wordmark + logo glyph for the CLEAR INSTITUTIONAL shell.
-
-export function LogoGlyph({ className = "h-6 w-6" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 32 32" className={className} aria-hidden>
-      <rect width="32" height="32" rx="7" fill="#0A0A0A" />
-      <path
-        d="M8 23V11l5 7 5-7v12"
-        fill="none"
-        stroke="#00EC97"
-        strokeWidth="2.4"
-        strokeLinejoin="round"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
-}
+// YieldAI wordmark for the CLEAR INSTITUTIONAL shell.
+// The logo is the "yield" mark; the product name is YieldAI.
 
 export function Wordmark({ className = "" }: { className?: string }) {
   return (
-    <span className={`inline-flex items-center gap-2 ${className}`}>
-      <LogoGlyph className="h-6 w-6" />
-      <span className="font-semibold tracking-tight text-[15px] text-ink">
-        MANDATE
+    <span className={`inline-flex items-center ${className}`}>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/yield-logo.png"
+        alt="Yield"
+        className="h-[18px] w-auto select-none"
+        draggable={false}
+      />
+      <span className="ml-[2px] text-[17px] font-bold leading-none tracking-tight text-ink">
+        AI
       </span>
     </span>
   );

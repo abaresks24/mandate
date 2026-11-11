@@ -12,7 +12,7 @@ export function TopBar() {
   return (
     <header className="sticky top-0 z-30 border-b border-hairline bg-paper/80 backdrop-blur-sm">
       <div className="mx-auto flex h-16 max-w-6xl items-center px-5 sm:px-8">
-        <Link href="/" aria-label="MANDATE home">
+        <Link href="/" aria-label="YieldAI home">
           <Wordmark />
         </Link>
         <div className="ml-auto flex items-center gap-2 sm:gap-3">

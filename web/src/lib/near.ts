@@ -1,4 +1,4 @@
-// near-api-js client stub for the MANDATE Coordinator + Vault contracts.
+// near-api-js client for the YieldAI Coordinator + Vault + Registry contracts.
 //
 // Defaults to MOCK MODE via NEXT_PUBLIC_MOCK=1 so the UI renders with no live
 // chain. Method signatures mirror SPEC.md "Coordinator contract" and "Vault

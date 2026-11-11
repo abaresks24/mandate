@@ -27,7 +27,7 @@ export function AppTopBar() {
   return (
     <header className="sticky top-0 z-30 border-b border-hairline bg-paper/80 backdrop-blur-sm">
       <div className="mx-auto flex h-16 max-w-6xl items-center gap-8 px-5 sm:px-8">
-        <Link href="/" aria-label="MANDATE home" className="shrink-0">
+        <Link href="/" aria-label="YieldAI home" className="shrink-0">
           <Wordmark />
         </Link>
 
