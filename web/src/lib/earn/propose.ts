@@ -38,6 +38,43 @@ export interface Allocation {
   explanation: string; // LLM-authored, grounded on the deterministic score
   mechanics: string; // how the move executes on-chain (real system)
   riskFactors: RiskFactor[]; // per-factor breakdown behind the score
+  category: string; // venue category (lending, LP, delta-neutral, …)
+  exposure: string; // asset exposure you take on (stablecoin/near/eth/btc/…)
+  keyRisk: string; // the characteristic risk of THIS venue type
+}
+
+// The characteristic risk of each venue category, in plain language.
+function keyRiskFor(category: string): string {
+  const m: Record<string, string> = {
+    "USDC lending":
+      "Smart-contract and utilization risk; your capital stays in stablecoin terms (no price volatility).",
+    "savings rate":
+      "Protocol/peg risk only — backed by fees and RWA, with no borrower or oracle dependency.",
+    "RWA — T-bills":
+      "Off-chain counterparty and custody risk: the Treasuries are held by a real-world issuer.",
+    "fixed-rate":
+      "The rate is locked to maturity; exiting early means selling at market (duration/rate risk).",
+    "delta-neutral":
+      "Funding can turn negative and the hedge leans on centralized venues — yield is not guaranteed.",
+    "liquid staking":
+      "Validator slashing risk, and you carry the underlying asset's price (ETH/NEAR), not a stablecoin.",
+    "BTC staking":
+      "You hold BTC price exposure, plus staking-protocol (Babylon-style) slashing risk.",
+    "BTC yield":
+      "BTC price exposure plus strategy/counterparty risk inside the yield engine.",
+    "DEX liquidity":
+      "Impermanent loss if the pair's price moves, and you take the non-stable asset's exposure.",
+    "concentrated LP":
+      "Impermanent loss plus active range management — returns are volatile.",
+    restaking:
+      "Extra slashing surface from the services you help secure; a newer, less battle-tested primitive.",
+    "incentivized vault":
+      "Most of the APY is token emissions that decay over time; thin audits and a short track record.",
+  };
+  return (
+    m[category] ??
+    "Smart-contract risk and any asset-price exposure implied by this venue."
+  );
 }
 
 export interface ProposedStrategy {
@@ -267,6 +304,9 @@ export function assembleStrategy(parsed: LlmProposal): ProposeResult {
       explanation: sanitizeExplanation(a.explanation, entry, risk),
       mechanics: entry.mechanics,
       riskFactors: scoreBreakdown(entry.risk),
+      category: entry.category,
+      exposure: entry.asset,
+      keyRisk: keyRiskFor(entry.category),
     });
   });
 

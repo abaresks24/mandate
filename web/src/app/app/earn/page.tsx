@@ -353,10 +353,15 @@ function DetailPanel({ strategy }: { strategy: ProposedStrategy }) {
         {strategy.allocations.map((a) => (
           <div key={a.protocol} className="flex flex-col gap-4">
             <div className="flex items-baseline justify-between gap-4 border-b border-hairline pb-2">
-              <span className="text-lg font-semibold text-ink">
-                {a.label} · {a.chain}
-              </span>
-              <span className="font-mono text-sm text-ink">
+              <div>
+                <span className="text-lg font-semibold text-ink">
+                  {a.label} · {a.chain}
+                </span>
+                <div className="mt-0.5 text-xs text-muted">
+                  {a.category} · exposure: <span className="uppercase">{a.exposure}</span>
+                </div>
+              </div>
+              <span className="whitespace-nowrap font-mono text-sm text-ink">
                 {a.weightPct}% · risk {a.riskScore}/100 ({a.riskLabel})
               </span>
             </div>
@@ -366,6 +371,13 @@ function DetailPanel({ strategy }: { strategy: ProposedStrategy }) {
                 Where the yield comes from
               </div>
               <p className="mt-1 text-sm leading-relaxed text-ink">{a.sourceOfYield}</p>
+            </div>
+
+            <div>
+              <div className="text-xs font-medium uppercase tracking-wider text-muted">
+                Key risk to watch
+              </div>
+              <p className="mt-1 text-sm leading-relaxed text-ink">{a.keyRisk}</p>
             </div>
 
             <div>
