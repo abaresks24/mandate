@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { live } from "@/lib/near";
 import { useLive } from "@/lib/useLive";
 import { MANDATE } from "@/mock/mandate";
@@ -181,6 +182,8 @@ function StrategyTable() {
   const [rows, setRows] = useState<UniverseRow[] | null>(null);
   const [chain, setChain] = useState("All");
   const [category, setCategory] = useState("All");
+  const [exposure, setExposure] = useState("All");
+  const [q, setQ] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("tvlUsd");
   const [desc, setDesc] = useState(true);
 
@@ -215,9 +218,17 @@ function StrategyTable() {
 
   const chains = ["All", ...Array.from(new Set(rows.map((r) => r.chain)))];
   const categories = ["All", ...Array.from(new Set(rows.map((r) => r.category)))];
+  const exposures = ["All", ...Array.from(new Set(rows.map((r) => r.exposure)))];
 
+  const query = q.trim().toLowerCase();
   const filtered = rows.filter(
-    (r) => (chain === "All" || r.chain === chain) && (category === "All" || r.category === category),
+    (r) =>
+      (chain === "All" || r.chain === chain) &&
+      (category === "All" || r.category === category) &&
+      (exposure === "All" || r.exposure === exposure) &&
+      (query === "" ||
+        r.name.toLowerCase().includes(query) ||
+        r.market.toLowerCase().includes(query)),
   );
   const sorted = [...filtered].sort((a, b) => {
     const d = a[sortKey] - b[sortKey];
@@ -235,9 +246,17 @@ function StrategyTable() {
 
   return (
     <div>
-      <div className="mb-5 flex flex-col gap-2">
+      <div className="mb-5 flex flex-col gap-3">
+        <input
+          type="text"
+          value={q}
+          onChange={(e) => setQ(e.target.value)}
+          placeholder="Search protocol or market…"
+          className="w-full max-w-xs rounded-lg border border-hairline bg-paper px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-ink focus:outline-none"
+        />
         <FilterRow label="Chain" options={chains} value={chain} onChange={setChain} />
         <FilterRow label="Category" options={categories} value={category} onChange={setCategory} />
+        <FilterRow label="Exposure" options={exposures} value={exposure} onChange={setExposure} />
       </div>
 
       <div className="overflow-x-auto">
@@ -259,11 +278,12 @@ function StrategyTable() {
                   TVL{caret("tvlUsd")}
                 </button>
               </th>
-              <th className="py-3 text-right font-medium">
+              <th className="py-3 pr-4 text-right font-medium">
                 <button type="button" onClick={() => toggleSort("riskScore")} className="uppercase tracking-wider hover:text-ink">
                   Risk{caret("riskScore")}
                 </button>
               </th>
+              <th className="py-3 font-medium" />
             </tr>
           </thead>
           <tbody>
@@ -283,7 +303,17 @@ function StrategyTable() {
                 <td className="py-3 pr-4 text-right font-mono tabular-nums text-muted">
                   {tvlShort(s.tvlUsd)}
                 </td>
-                <td className="py-3 text-right text-sm text-muted">{s.risk}</td>
+                <td className="py-3 pr-4 text-right text-sm text-muted">{s.risk}</td>
+                <td className="py-3 text-right">
+                  <Link
+                    href={`/app/earn?seed=${encodeURIComponent(
+                      `Put my USDC to work via ${s.name} ${s.market} on ${s.chain}`,
+                    )}`}
+                    className="text-sm text-muted underline-offset-4 hover:text-ink hover:underline"
+                  >
+                    Earn →
+                  </Link>
+                </td>
               </tr>
             ))}
           </tbody>

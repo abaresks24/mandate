@@ -38,6 +38,12 @@ export default function Earn() {
   const [refineMsg, setRefineMsg] = useState("");
   const [refining, setRefining] = useState(false);
 
+  // Prefill the prompt from a ?seed= (e.g. "Earn →" from the Overview market list).
+  useEffect(() => {
+    const seed = new URLSearchParams(window.location.search).get("seed");
+    if (seed) setPrompt(seed);
+  }, []);
+
   const strategy = result?.status === "proposed" ? result.strategy : null;
 
   async function propose(brief: string) {
