@@ -41,7 +41,7 @@ const MATCH: Record<string, { project: string; chain: string; symbol: string }> 
   // "hyper-usdc" is illustrative (no real pool) -> falls back to the catalogue rate.
 };
 
-const TTL_MS = 10 * 60 * 1000;
+const TTL_MS = 3 * 60 * 1000;
 let cache: { at: number; pools: LlamaPool[] } | null = null;
 
 async function fetchPools(): Promise<LlamaPool[]> {
@@ -58,11 +58,20 @@ async function fetchPools(): Promise<LlamaPool[]> {
   }
 }
 
+export interface LiveApy {
+  apyBps: number; // current APY in bps
+  market: string; // the SPECIFIC market the rate is from (e.g. "STEAKUSDC")
+  tvlUsd: number; // that market's TVL
+}
+
 /**
- * Current APY (in bps) for every mapped venue. Keys without a live match are
- * omitted — the caller falls back to the catalogue's default_apy_bps.
+ * Current APY for every mapped venue. A protocol like Morpho has MANY markets
+ * (74 USDC markets on Ethereum alone) with different rates — we surface the
+ * deepest (highest-TVL) matching market and name it, so the number is tied to a
+ * real, specific market rather than an ambiguous protocol average. Keys without
+ * a live match are omitted — the caller falls back to the catalogue rate.
  */
-export async function getLiveApyBps(): Promise<Record<string, number>> {
+export async function getLiveApy(): Promise<Record<string, LiveApy>> {
   let pools: LlamaPool[];
   try {
     pools = await fetchPools();
@@ -70,7 +79,7 @@ export async function getLiveApyBps(): Promise<Record<string, number>> {
     return {}; // network/timeout → caller uses catalogue fallbacks
   }
 
-  const out: Record<string, number> = {};
+  const out: Record<string, LiveApy> = {};
   for (const [key, m] of Object.entries(MATCH)) {
     const sym = m.symbol.toUpperCase();
     const proj = m.project.toLowerCase();
@@ -79,13 +88,26 @@ export async function getLiveApyBps(): Promise<Record<string, number>> {
         p.chain === m.chain &&
         p.project.toLowerCase().includes(proj) &&
         p.symbol?.toUpperCase().includes(sym) &&
-        typeof p.apy === "number",
+        typeof p.apy === "number" &&
+        (p.apy as number) > 0 &&
+        (p.apy as number) <= 200, // clamp transient LP spikes
     );
     if (matches.length === 0) continue;
     matches.sort((a, b) => (b.tvlUsd ?? 0) - (a.tvlUsd ?? 0));
-    const apy = matches[0]!.apy as number;
-    // sanity clamp: ignore absurd outliers (> 200% is almost always a transient LP spike)
-    if (apy > 0 && apy <= 200) out[key] = Math.round(apy * 100);
+    const best = matches[0]!;
+    out[key] = {
+      apyBps: Math.round((best.apy as number) * 100),
+      market: best.symbol,
+      tvlUsd: best.tvlUsd ?? 0,
+    };
   }
+  return out;
+}
+
+/** Back-compat: bps-only map. */
+export async function getLiveApyBps(): Promise<Record<string, number>> {
+  const full = await getLiveApy();
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(full)) out[k] = v.apyBps;
   return out;
 }

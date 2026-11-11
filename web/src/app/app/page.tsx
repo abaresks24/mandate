@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { live } from "@/lib/near";
 import { useLive } from "@/lib/useLive";
 import { MANDATE } from "@/mock/mandate";
@@ -138,18 +139,45 @@ const SAMPLE_KEYS = [
   "hyper-usdc",
 ];
 
+type LiveApy = { apyBps: number; market: string };
+
 function StrategyTable() {
-  const rows = SAMPLE_KEYS.map((k) => CATALOGUE[k])
-    .filter(Boolean)
-    .map((e) => ({
-      name: e.displayName,
-      chain: e.chainLabel,
-      source: e.category,
-      exposure: e.asset,
-      apy: `${(e.default_apy_bps / 100).toFixed(2)}%`,
-      risk: riskLabel(scoreProtocol(e.risk)),
-      live: e.live,
-    }));
+  const [apys, setApys] = useState<Record<string, LiveApy>>({});
+
+  // Live APYs from DefiLlama, refreshed every 60s.
+  useEffect(() => {
+    let alive = true;
+    const load = () =>
+      fetch("/api/apys")
+        .then((r) => r.json())
+        .then((d) => {
+          if (alive) setApys(d.apys ?? {});
+        })
+        .catch(() => {});
+    load();
+    const id = setInterval(load, 60_000);
+    return () => {
+      alive = false;
+      clearInterval(id);
+    };
+  }, []);
+
+  const rows = SAMPLE_KEYS.map((k) => ({ k, e: CATALOGUE[k]! }))
+    .filter((x) => x.e)
+    .map(({ k, e }) => {
+      const la = apys[k];
+      const apyBps = la?.apyBps ?? e.default_apy_bps;
+      return {
+        name: e.displayName,
+        chain: e.chainLabel,
+        source: e.category,
+        exposure: e.asset,
+        apy: `${(apyBps / 100).toFixed(2)}%`,
+        market: la?.market,
+        risk: riskLabel(scoreProtocol(e.risk)),
+        live: e.live,
+      };
+    });
 
   return (
     <div className="overflow-x-auto">
@@ -178,12 +206,21 @@ function StrategyTable() {
               <td className="py-4 pr-4 text-sm uppercase text-muted">{s.exposure}</td>
               <td className="py-4 pr-4 text-right font-mono tabular-nums text-ink">
                 {s.apy}
+                {s.market && (
+                  <div className="font-sans text-[10px] font-normal text-muted">
+                    {s.market}
+                  </div>
+                )}
               </td>
               <td className="py-4 text-right text-sm text-muted">{s.risk}</td>
             </tr>
           ))}
         </tbody>
       </table>
+      <p className="mt-3 text-xs text-muted">
+        Live APYs from DefiLlama, refreshed every minute. Protocols like Morpho run
+        many markets — the rate shown is the deepest (highest-TVL) market.
+      </p>
     </div>
   );
 }

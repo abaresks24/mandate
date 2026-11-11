@@ -10,12 +10,19 @@
 import { CATALOGUE, CATALOGUE_KEYS, type ProtocolCatalogueEntry } from "./catalogue";
 import { chatJson, readLlmConfig, type ChatMessage, type LlmConfig } from "./llm";
 import { riskLabel, scoreBreakdown, scoreProtocol, type RiskFactor } from "./risk";
-import { getLiveApyBps } from "./apy";
+import { getLiveApy, type LiveApy } from "./apy";
+
+type ApyMap = Record<string, LiveApy>;
 
 // Live APY (bps) for a venue — DefiLlama rate if available, else the catalogue's
 // representative rate.
-function apyFor(key: string, live: Record<string, number>): number {
-  return live[key] ?? CATALOGUE[key]!.default_apy_bps;
+function apyFor(key: string, live: ApyMap): number {
+  return live[key]?.apyBps ?? CATALOGUE[key]!.default_apy_bps;
+}
+
+// The specific market a live rate comes from (e.g. "STEAKUSDC"), if any.
+function marketFor(key: string, live: ApyMap): string | undefined {
+  return live[key]?.market;
 }
 
 // ---------------------------------------------------------------------------
@@ -49,6 +56,7 @@ export interface Allocation {
   exposure: string; // asset exposure you take on (stablecoin/near/eth/btc/…)
   keyRisk: string; // the characteristic risk of THIS venue type
   apyBps: number; // this venue's current APY (live from DefiLlama when available)
+  apyMarket?: string; // the specific market the live rate is from (e.g. "STEAKUSDC")
 }
 
 // The characteristic risk of each venue category, in plain language.
@@ -131,7 +139,7 @@ interface LlmProposal {
 const MAX_REALISTIC_APY_BPS = 2500; // 25%
 const LOW_RISK_CAP = 25;
 
-function catalogueBrief(apys: Record<string, number>): string {
+function catalogueBrief(apys: ApyMap): string {
   return CATALOGUE_KEYS.map((k) => {
     const e = CATALOGUE[k]!;
     const liveTag = e.live ? "LIVE" : "roadmap";
@@ -141,7 +149,7 @@ function catalogueBrief(apys: Record<string, number>): string {
   }).join("\n");
 }
 
-function systemPrompt(apys: Record<string, number>): string {
+function systemPrompt(apys: ApyMap): string {
   return [
     "You are YieldAI's strategy drafter. You convert a user's investment brief",
     "into a PROPOSED on-chain yield strategy. Respond ONLY with a JSON object.",
@@ -233,7 +241,7 @@ function sanitizeExplanation(llmText: string | undefined, entry: ProtocolCatalog
 /** Build the structured proposal from a parsed LLM proposal. Shared by propose + refine. */
 export function assembleStrategy(
   parsed: LlmProposal,
-  apys: Record<string, number> = {},
+  apys: ApyMap = {},
 ): ProposeResult {
   if (parsed.realistic === false) {
     return {
@@ -311,6 +319,7 @@ export function assembleStrategy(
     blendedApy += (apyBps * w) / 100;
     allocations.push({
       apyBps,
+      apyMarket: marketFor(key, apys),
       label: entry.displayName,
       protocol: key,
       chain: entry.chainLabel,
@@ -390,7 +399,7 @@ export async function proposeStrategy(brief: string, cfg?: LlmConfig): Promise<P
   }
 
   const config = cfg ?? readLlmConfig();
-  const apys = await getLiveApyBps();
+  const apys = await getLiveApy();
   const messages: ChatMessage[] = [
     { role: "system", content: systemPrompt(apys) },
     { role: "user", content: brief },
@@ -428,7 +437,7 @@ export async function refineStrategy(
     };
   }
   const config = cfg ?? readLlmConfig();
-  const apys = await getLiveApyBps();
+  const apys = await getLiveApy();
 
   const priorSummary = JSON.stringify({
     summary: priorStrategy.summary,

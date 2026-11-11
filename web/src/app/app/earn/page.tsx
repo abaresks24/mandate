@@ -316,6 +316,11 @@ function ProposalView(props: {
                   <td className="py-3 pr-4 text-muted">USDC {sourceWord(a)}</td>
                   <td className="py-3 pr-4 text-right font-mono text-ink">
                     {(a.apyBps / 100).toFixed(1)}%
+                    {a.apyMarket && (
+                      <div className="font-sans text-[10px] font-normal text-muted">
+                        {a.apyMarket}
+                      </div>
+                    )}
                   </td>
                   <td className="py-3 pr-4 text-right font-mono text-ink">{a.weightPct}%</td>
                   <td className="py-3 text-right font-mono text-ink">
@@ -392,7 +397,9 @@ function DetailPanel({ strategy }: { strategy: ProposedStrategy }) {
                   {a.label} · {a.chain}
                 </span>
                 <div className="mt-0.5 text-xs text-muted">
-                  {a.category} · exposure: <span className="uppercase">{a.exposure}</span>
+                  {a.category} · exposure: <span className="uppercase">{a.exposure}</span> ·{" "}
+                  {(a.apyBps / 100).toFixed(2)}% APY
+                  {a.apyMarket ? ` · ${a.apyMarket} market (live)` : " (indicative)"}
                 </div>
               </div>
               <span className="whitespace-nowrap font-mono text-sm text-ink">
