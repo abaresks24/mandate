@@ -384,7 +384,7 @@ export async function proposeStrategy(brief: string, cfg?: LlmConfig): Promise<P
 
   let parsed: LlmProposal;
   try {
-    const raw = await chatJson(messages, config, { temperature: 0.55 });
+    const raw = await chatJson(messages, config, { temperature: 0.2 });
     parsed = JSON.parse(raw) as LlmProposal;
   } catch (err) {
     return {
@@ -440,7 +440,7 @@ export async function refineStrategy(
 
   let parsed: LlmProposal;
   try {
-    const raw = await chatJson(messages, config, { temperature: 0.55 });
+    const raw = await chatJson(messages, config, { temperature: 0.2 });
     parsed = JSON.parse(raw) as LlmProposal;
   } catch (err) {
     return {
