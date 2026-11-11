@@ -47,8 +47,6 @@ export default function Overview() {
   const bonded = rows.length;
   const totalBond = sumBondUsdc(rows);
 
-  const isLive = guardians.source === "live" || mandate.source === "live";
-
   return (
     <div className="flex flex-col gap-16">
       {/* Header */}
@@ -88,26 +86,16 @@ export default function Overview() {
 
       {/* Most-used strategies */}
       <section>
-        <div className="mb-6 flex items-end justify-between">
-          <div>
-            <h2 className="text-xl font-semibold tracking-tight text-ink">
-              Most-used strategies
-            </h2>
-            <p className="mt-1 text-sm text-muted">
-              Where the agent puts stablecoins to work.
-            </p>
-          </div>
-          <span className="hidden text-sm text-muted sm:inline">
-            {isLive ? "live · testnet" : "representative figures"}
-          </span>
+        <div className="mb-6">
+          <h2 className="text-xl font-semibold tracking-tight text-ink">
+            Most-used strategies
+          </h2>
+          <p className="mt-1 text-sm text-muted">
+            Where the agent puts stablecoins to work.
+          </p>
         </div>
 
         <StrategyTable targetApy={bps(m.target_apy_bps)} />
-
-        <p className="mt-5 max-w-3xl text-sm leading-relaxed text-muted">
-          Target APY reflects the on-chain demo mandate. TVL and user counts are
-          representative placeholders — this build is not a live TVL index.
-        </p>
       </section>
     </div>
   );

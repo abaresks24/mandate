@@ -7,7 +7,7 @@ import { Button } from "@/components/button";
 import { ConnectWallet } from "@/components/wallet/ConnectWallet";
 import { cn } from "@/lib/cn";
 
-const DOCS_URL = "https://github.com/abaresks24/mandate";
+const DOCS_URL = "https://github.com/abaresks24/yieldai";
 
 const NAV = [
   { href: "/app", label: "Overview" },

@@ -3,7 +3,7 @@ import { TopBar } from "@/components/TopBar";
 import { Button } from "@/components/button";
 import { Wordmark } from "@/components/brand";
 
-const DOCS_URL = "https://github.com/abaresks24/mandate";
+const DOCS_URL = "https://github.com/abaresks24/yieldai";
 
 export default function Landing() {
   return (
@@ -12,12 +12,7 @@ export default function Landing() {
 
       {/* HERO — fills the first viewport, airy, left-aligned, massive type */}
       <section className="relative flex flex-1 items-center">
-        <div className="mx-auto w-full max-w-6xl px-5 pb-24 pt-20 sm:px-8 sm:pt-28">
-          <p className="mb-6 flex items-center gap-2 text-sm font-medium text-muted">
-            <span className="h-1.5 w-1.5 rounded-full bg-near" aria-hidden />
-            Live on NEAR testnet
-          </p>
-
+        <div className="mx-auto w-full max-w-6xl px-5 pb-24 pt-24 sm:px-8 sm:pt-32">
           <h1 className="display max-w-4xl text-5xl font-semibold leading-[1.03] text-ink sm:text-6xl lg:text-7xl">
             Earn yield you can
             <br />

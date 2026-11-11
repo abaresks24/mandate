@@ -5,7 +5,7 @@ import { Wordmark } from "@/components/brand";
 import { Button } from "@/components/button";
 import { ConnectWallet } from "@/components/wallet/ConnectWallet";
 
-const DOCS_URL = "https://github.com/abaresks24/mandate";
+const DOCS_URL = "https://github.com/abaresks24/yieldai";
 
 // Landing top bar: wordmark left, Docs + Connect Wallet right.
 export function TopBar() {

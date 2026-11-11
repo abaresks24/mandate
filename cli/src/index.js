@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// MANDATE CLI — use the protocol from your terminal.
+// YieldAI CLI — use the protocol from your terminal.
 //
 // Thin client over the already-deployed infrastructure:
 //   • AI strategy proposals  -> the live /api/propose + /api/refine endpoints
@@ -12,7 +12,7 @@
 
 import { spawnSync } from "node:child_process";
 
-const API = process.env.MANDATE_API ?? "https://mandate-near-nine.vercel.app";
+const API = process.env.MANDATE_API ?? "https://yieldai.vercel.app";
 const RPC = process.env.NEAR_RPC ?? "https://rpc.testnet.near.org";
 const REGISTRY = process.env.MANDATE_REGISTRY ?? "registry.mandate-arthur.testnet";
 const COORDINATOR = process.env.MANDATE_COORDINATOR ?? "coordinator.mandate-arthur.testnet";
@@ -218,7 +218,7 @@ async function cmdProof() {
 }
 
 function help() {
-  console.log(`${bold("MANDATE")} — use the protocol from your terminal
+  console.log(`${bold("YieldAI")} — use the protocol from your terminal
 
 ${bold("AI strategy")} ${dim("(via the live API — no key needed)")}
   mandate propose "<brief>"                 propose a strategy for a plain-language brief

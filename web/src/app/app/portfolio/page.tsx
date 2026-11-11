@@ -72,7 +72,6 @@ export default function Portfolio() {
   const activeCount = pos.positions.length;
 
   const metricsLoading = positions.loading || mandate.loading;
-  const metricsLive = positions.source === "live" && mandate.source === "live";
 
   return (
     <div className="flex flex-col gap-16">
@@ -117,14 +116,9 @@ export default function Portfolio() {
       {/* Your strategy — the connected user's OWN on-chain mandate */}
       {ownRecord && (
         <section>
-          <div className="mb-4 flex items-end justify-between">
-            <h2 className="text-xl font-semibold tracking-tight text-ink">
-              Your strategy
-            </h2>
-            <span className="hidden text-sm text-muted sm:inline">
-              live · your account
-            </span>
-          </div>
+          <h2 className="mb-4 text-xl font-semibold tracking-tight text-ink">
+            Your strategy
+          </h2>
           <YourStrategy record={ownRecord} />
         </section>
       )}
@@ -166,18 +160,9 @@ export default function Portfolio() {
 
       {/* Positions */}
       <section>
-        <div className="mb-6 flex items-end justify-between">
-          <h2 className="text-xl font-semibold tracking-tight text-ink">
-            Positions
-          </h2>
-          <span className="hidden text-sm text-muted sm:inline">
-            {positions.loading
-              ? "reading vault…"
-              : metricsLive
-              ? "live · testnet"
-              : "representative (live call unavailable)"}
-          </span>
-        </div>
+        <h2 className="mb-6 text-xl font-semibold tracking-tight text-ink">
+          Positions
+        </h2>
 
         {positions.loading ? (
           <PositionsSkeleton />

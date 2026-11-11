@@ -109,7 +109,7 @@ $ node cli/src/index.js proof
 | Vault (per-mandate, demo) | `demo.vaults.mandate-arthur.testnet` | https://testnet.nearblocks.io/address/demo.vaults.mandate-arthur.testnet |
 | Mandate Registry | `registry.mandate-arthur.testnet` | https://testnet.nearblocks.io/address/registry.mandate-arthur.testnet |
 
-Web app: https://mandate-near-nine.vercel.app · Repo: https://github.com/abaresks24/mandate
+Web app: https://yieldai.vercel.app · Repo: https://github.com/abaresks24/yieldai
 
 ---
 
