@@ -3,7 +3,7 @@ import { TopBar } from "@/components/TopBar";
 import { Button } from "@/components/button";
 import { Wordmark } from "@/components/brand";
 
-const DOCS_URL = "https://github.com/abaresks24/yieldai";
+const REPO = "https://github.com/abaresks24/yieldai";
 
 export default function Landing() {
   return (
@@ -31,11 +31,11 @@ export default function Landing() {
                 Launch app →
               </Button>
             </Link>
-            <a href={DOCS_URL} target="_blank" rel="noopener noreferrer">
+            <Link href="/docs">
               <Button variant="secondary" size="lg">
                 Read the docs
               </Button>
-            </a>
+            </Link>
           </div>
         </div>
       </section>
@@ -162,16 +162,11 @@ export default function Landing() {
             <span className="text-sm text-muted">· Built on NEAR</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-muted">
-            <a
-              href={DOCS_URL}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="hover:text-ink transition-colors"
-            >
+            <Link href="/docs" className="hover:text-ink transition-colors">
               Docs
-            </a>
+            </Link>
             <a
-              href={DOCS_URL}
+              href={REPO}
               target="_blank"
               rel="noopener noreferrer"
               className="hover:text-ink transition-colors"

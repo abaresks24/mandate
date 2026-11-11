@@ -5,8 +5,6 @@ import { Wordmark } from "@/components/brand";
 import { Button } from "@/components/button";
 import { ConnectWallet } from "@/components/wallet/ConnectWallet";
 
-const DOCS_URL = "https://github.com/abaresks24/yieldai";
-
 // Landing top bar: wordmark left, Docs + Connect Wallet right.
 export function TopBar() {
   return (
@@ -16,9 +14,9 @@ export function TopBar() {
           <Wordmark />
         </Link>
         <div className="ml-auto flex items-center gap-2 sm:gap-3">
-          <a href={DOCS_URL} target="_blank" rel="noopener noreferrer">
+          <Link href="/docs">
             <Button variant="ghost">Docs</Button>
-          </a>
+          </Link>
           <ConnectWallet />
         </div>
       </div>

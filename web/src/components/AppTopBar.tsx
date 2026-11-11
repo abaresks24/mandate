@@ -7,8 +7,6 @@ import { Button } from "@/components/button";
 import { ConnectWallet } from "@/components/wallet/ConnectWallet";
 import { cn } from "@/lib/cn";
 
-const DOCS_URL = "https://github.com/abaresks24/yieldai";
-
 const NAV = [
   { href: "/app", label: "Overview" },
   { href: "/app/earn", label: "Earn" },
@@ -53,14 +51,9 @@ export function AppTopBar() {
         </nav>
 
         <div className="ml-auto flex items-center gap-2 sm:gap-3">
-          <a
-            href={DOCS_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="hidden sm:inline-flex"
-          >
+          <Link href="/docs" className="hidden sm:inline-flex">
             <Button variant="ghost">Docs</Button>
-          </a>
+          </Link>
           <ConnectWallet />
         </div>
       </div>
