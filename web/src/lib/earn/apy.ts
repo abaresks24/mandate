@@ -6,7 +6,8 @@
 // This replaces the old fixed per-venue rates: "Morpho" is now the live Morpho
 // USDC rate, not a hardcoded 5%.
 
-interface LlamaPool {
+export interface LlamaPool {
+  pool: string; // stable unique id
   chain: string;
   project: string;
   symbol: string;
@@ -44,7 +45,7 @@ const MATCH: Record<string, { project: string; chain: string; symbol: string }> 
 const TTL_MS = 3 * 60 * 1000;
 let cache: { at: number; pools: LlamaPool[] } | null = null;
 
-async function fetchPools(): Promise<LlamaPool[]> {
+export async function fetchPools(): Promise<LlamaPool[]> {
   if (cache && Date.now() - cache.at < TTL_MS) return cache.pools;
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 8000);

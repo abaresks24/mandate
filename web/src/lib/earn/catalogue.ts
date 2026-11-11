@@ -182,16 +182,6 @@ export const CATALOGUE: Record<string, ProtocolCatalogueEntry> = {
     sourceOfYield: "Restake ETH to secure additional services (AVSs) on top of staking rewards. Extra yield, extra slashing surface — a newer, riskier primitive.",
     mechanics: "Restake stETH into EigenLayer (roadmap venue).",
   }),
-
-  // ─── High-yield / newer farm (high) ───
-  "hyper-usdc": e({
-    key: "hyper-usdc", displayName: "HyperVault USDC", chain: "arbitrum", chainLabel: "Arbitrum",
-    asset: "stablecoin", category: "incentivized vault", default_apy_bps: 2200,
-    market: "hypervault-usdc", token: "usdc", live: false,
-    risk: { name: "hyper-usdc", audits: 1, tvl_usd: 25_000_000, age_days: 90, exploit_history: 0, oracle_dependency: true, yield_source: "algorithmic" },
-    sourceOfYield: "A newer incentivized USDC vault on Arbitrum — most of the APY is token emissions, which decay. High headline yield, thin audits, short track record.",
-    mechanics: "Deposit into the incentivized vault (roadmap venue). Highest risk tier.",
-  }),
 };
 
 export const CATALOGUE_KEYS = Object.keys(CATALOGUE);

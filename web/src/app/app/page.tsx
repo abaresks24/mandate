@@ -136,7 +136,7 @@ const SAMPLE_KEYS = [
   "ethena-susde",
   "lido-steth",
   "lombard-lbtc",
-  "hyper-usdc",
+  "eigenlayer",
 ];
 
 type LiveApy = { apyBps: number; market: string };
