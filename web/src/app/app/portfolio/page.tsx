@@ -77,10 +77,8 @@ export default function Portfolio() {
     <div className="flex flex-col gap-16">
       {/* Header + wallet awareness */}
       <header>
-        <h1 className="display text-4xl font-semibold leading-tight text-ink sm:text-5xl">
-          Portfolio
-        </h1>
-        <p className="mt-3 max-w-2xl text-lg leading-relaxed text-muted">
+        <h1 className="page-h1">Portfolio</h1>
+        <p className="page-lede">
           The live state of the showcased vault — its value, the mandate that
           bounds it, and every action the guardian committee has verified.
         </p>
@@ -89,9 +87,7 @@ export default function Portfolio() {
           {accountId ? (
             <span>
               Connected as{" "}
-              <span className="font-mono text-ink">
-                {truncateAccount(accountId)}
-              </span>
+              <span className="num text-ink">{truncateAccount(accountId)}</span>
               .{" "}
               {ownRecord
                 ? "Your registered mandate is shown below, above the demo vault."
@@ -103,7 +99,7 @@ export default function Portfolio() {
               <button
                 type="button"
                 onClick={signIn}
-                className="underline underline-offset-4 hover:text-ink"
+                className="focusable underline underline-offset-4 hover:text-ink"
               >
                 Connect a wallet
               </button>{" "}
@@ -116,18 +112,14 @@ export default function Portfolio() {
       {/* Your strategy — the connected user's OWN on-chain mandate */}
       {ownRecord && (
         <section>
-          <h2 className="mb-4 text-xl font-semibold tracking-tight text-ink">
-            Your strategy
-          </h2>
+          <h2 className="section-h2 mb-4">Your strategy</h2>
           <YourStrategy record={ownRecord} />
         </section>
       )}
 
       {/* Demo vault heading */}
       <div className={ownRecord ? "border-t border-hairline pt-10" : undefined}>
-        <h2 className="text-xl font-semibold tracking-tight text-ink">
-          Demo vault
-        </h2>
+        <h2 className="section-h2">Demo vault</h2>
         <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">
           The live state of the showcased vault — its value, the mandate that
           bounds it, and every action the guardian committee has verified.
@@ -160,9 +152,7 @@ export default function Portfolio() {
 
       {/* Positions */}
       <section>
-        <h2 className="mb-6 text-xl font-semibold tracking-tight text-ink">
-          Positions
-        </h2>
+        <h2 className="section-h2 mb-6">Positions</h2>
 
         {positions.loading ? (
           <PositionsSkeleton />
@@ -175,9 +165,7 @@ export default function Portfolio() {
 
       {/* Mandate summary */}
       <section>
-        <h2 className="text-xl font-semibold tracking-tight text-ink">
-          Mandate
-        </h2>
+        <h2 className="section-h2">Mandate</h2>
         <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">
           The rules the vault enforces on-chain. The agent can only ever propose
           moves inside these bounds — anything outside is rejected before it can
@@ -188,9 +176,7 @@ export default function Portfolio() {
 
       {/* Activity feed — real on-chain proofs framed as portfolio activity */}
       <section>
-        <h2 className="text-xl font-semibold tracking-tight text-ink">
-          Activity
-        </h2>
+        <h2 className="section-h2">Activity</h2>
         <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">
           Every verified move, the proofs behind it, and the one slash the
           committee has issued.
@@ -222,12 +208,12 @@ function YourStrategy({ record }: { record: MandateRecord }) {
       : "—";
 
   return (
-    <div className="rounded-xl border border-hairline">
+    <div className="surface-card">
       <div className="border-b border-hairline p-5">
-        <div className="font-mono text-base text-ink">{record.label || "Mandate"}</div>
+        <div className="num text-base text-ink">{record.label || "Mandate"}</div>
         <div className="mt-1 text-sm text-muted">
           Registered on-chain under{" "}
-          <span className="font-mono text-ink">{truncateAccount(record.owner)}</span>
+          <span className="num text-ink">{truncateAccount(record.owner)}</span>
           {when !== "—" ? ` · ${when}` : ""}
         </div>
       </div>
@@ -252,10 +238,8 @@ function YourStrategyCell({
 }) {
   return (
     <div className="bg-paper p-5">
-      <div className="text-xs uppercase tracking-wide text-muted">{label}</div>
-      <div
-        className={`mt-1 font-mono text-lg text-ink ${accent ? "font-semibold" : ""}`}
-      >
+      <div className="label">{label}</div>
+      <div className={`num mt-1 text-lg text-ink ${accent ? "font-semibold" : ""}`}>
         {value}
       </div>
     </div>
@@ -273,28 +257,24 @@ function Metric({
 }) {
   return (
     <div className="bg-paper p-6">
-      <div className="text-xs font-medium uppercase tracking-wider text-muted">
-        {label}
-      </div>
+      <div className="label">{label}</div>
       {value === null ? (
-        <div className="mt-3 h-9 w-24 animate-pulse rounded bg-mist" />
+        <div className="skeleton mt-3 h-9 w-24 rounded" />
       ) : (
-        <div className="mt-3 font-mono text-3xl font-semibold tabular-nums text-ink">
-          {value}
-        </div>
+        <div className="num mt-3 text-3xl font-semibold text-ink">{value}</div>
       )}
-      <div className="mt-2 text-xs text-muted">{hint}</div>
+      <div className="mt-2 text-xs leading-relaxed text-muted">{hint}</div>
     </div>
   );
 }
 
 function PositionsSkeleton() {
   return (
-    <div className="rounded-xl border border-hairline p-6">
+    <div className="surface-card p-6">
       <div className="space-y-4">
-        <div className="h-4 w-full animate-pulse rounded bg-mist" />
-        <div className="h-4 w-5/6 animate-pulse rounded bg-mist" />
-        <div className="h-4 w-4/6 animate-pulse rounded bg-mist" />
+        <div className="skeleton h-4 w-full rounded" />
+        <div className="skeleton h-4 w-5/6 rounded" />
+        <div className="skeleton h-4 w-4/6 rounded" />
       </div>
     </div>
   );
@@ -312,15 +292,14 @@ function EmptyPositions({ idle, live }: { idle: string; live: boolean }) {
         {idleN > 0 && (
           <>
             {" "}
-            Idle balance:{" "}
-            <span className="font-mono text-ink">{usdc(idle)}</span>.
+            Idle balance: <span className="num text-ink">{usdc(idle)}</span>.
           </>
         )}
       </p>
       <div className="mt-6">
         <Link
           href="/app/earn"
-          className="text-sm font-medium text-ink underline-offset-4 hover:underline"
+          className="focusable text-sm font-medium text-ink underline-offset-4 hover:underline"
         >
           Propose a strategy →
         </Link>
@@ -339,14 +318,14 @@ function PositionsTable({
   const totalN = Number(total);
   return (
     <div className="mt-6 overflow-x-auto">
-      <table className="w-full border-collapse text-left">
+      <table className="data-table">
         <thead>
-          <tr className="border-b border-hairline text-xs font-medium uppercase tracking-wider text-muted">
-            <th className="py-3 pr-4 font-medium">Strategy</th>
-            <th className="py-3 pr-4 font-medium">Chain</th>
-            <th className="py-3 pr-4 text-right font-medium">Allocation</th>
-            <th className="py-3 pr-4 text-right font-medium">Value</th>
-            <th className="py-3 text-right font-medium">Status</th>
+          <tr>
+            <th>Strategy</th>
+            <th>Chain</th>
+            <th className="text-right">Allocation</th>
+            <th className="text-right">Value</th>
+            <th className="text-right">Status</th>
           </tr>
         </thead>
         <tbody>
@@ -356,23 +335,14 @@ function PositionsTable({
                 ? `${((Number(p.amount_usdc) / totalN) * 100).toFixed(1)}%`
                 : "—";
             return (
-              <tr
-                key={`${p.protocol}-${p.chain}-${i}`}
-                className="border-b border-hairline last:border-0"
-              >
-                <td className="py-4 pr-4 font-medium text-ink">
+              <tr key={`${p.protocol}-${p.chain}-${i}`}>
+                <td className="font-medium text-ink">
                   {protocolLabel(p.protocol)}
                 </td>
-                <td className="py-4 pr-4 text-sm text-muted">
-                  {chainLabel(p.chain)}
-                </td>
-                <td className="py-4 pr-4 text-right font-mono tabular-nums text-ink">
-                  {share}
-                </td>
-                <td className="py-4 pr-4 text-right font-mono tabular-nums text-ink">
-                  {usdc(p.amount_usdc)}
-                </td>
-                <td className="py-4 text-right text-sm text-muted">Open</td>
+                <td className="text-sm text-muted">{chainLabel(p.chain)}</td>
+                <td className="num text-right text-ink">{share}</td>
+                <td className="num text-right text-ink">{usdc(p.amount_usdc)}</td>
+                <td className="text-right text-sm text-muted">Open</td>
               </tr>
             );
           })}
@@ -394,8 +364,8 @@ function MandateSummary({
   if (loading) {
     return (
       <div className="mt-6 space-y-3">
-        <div className="h-4 w-full animate-pulse rounded bg-mist" />
-        <div className="h-4 w-4/5 animate-pulse rounded bg-mist" />
+        <div className="skeleton h-4 w-full rounded" />
+        <div className="skeleton h-4 w-4/5 rounded" />
       </div>
     );
   }
@@ -427,7 +397,7 @@ function MandateSummary({
           type="button"
           onClick={() => setOpen((o) => !o)}
           aria-expanded={open}
-          className="py-4 text-sm text-muted underline-offset-4 hover:text-ink hover:underline"
+          className="focusable py-4 text-sm text-muted underline-offset-4 hover:text-ink hover:underline"
         >
           {open ? "Hide caps & kill-switch" : "Caps & kill-switch →"}
         </button>
@@ -454,7 +424,7 @@ function MandateRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-4 border-b border-hairline py-1.5">
       <dt className="shrink-0 text-muted">{label}</dt>
-      <dd className="text-right font-mono text-ink">{value}</dd>
+      <dd className="num text-right text-ink">{value}</dd>
     </div>
   );
 }
@@ -532,7 +502,7 @@ function ActivityRow({
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
           <span className="font-medium text-ink">{title}</span>
-          <span className="font-mono text-xs text-muted">{meta}</span>
+          <span className="num text-xs text-muted">{meta}</span>
         </div>
         <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">
           {body}
@@ -542,7 +512,7 @@ function ActivityRow({
             href={link.href}
             target="_blank"
             rel="noopener noreferrer"
-            className="mt-2 inline-flex items-center gap-1.5 font-mono text-xs text-muted hover:text-ink"
+            className="ext-link mt-2"
           >
             {link.label}
             <ArrowUpRight className="h-3.5 w-3.5" />

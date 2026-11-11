@@ -20,10 +20,10 @@ export function ConnectWallet({ className }: { className?: string }) {
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="inline-flex items-center gap-2 rounded-lg border border-hairline px-3 py-2 text-sm font-medium text-ink hover:border-ink/40 transition-colors"
+          className="inline-flex items-center gap-2 rounded-lg border border-hairline px-3 py-2 text-sm font-medium text-ink transition-colors hover:border-ink/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/20"
         >
           <span className="h-1.5 w-1.5 rounded-full bg-near" aria-hidden />
-          <span className="font-mono text-[13px]">{truncate(accountId)}</span>
+          <span className="font-mono text-[13px] tabular-nums">{truncate(accountId)}</span>
         </button>
         {open && (
           <>

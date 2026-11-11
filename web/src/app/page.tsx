@@ -162,18 +162,18 @@ export default function Landing() {
             <span className="text-sm text-muted">· Built on NEAR</span>
           </div>
           <div className="flex items-center gap-6 text-sm text-muted">
-            <Link href="/docs" className="hover:text-ink transition-colors">
+            <Link href="/docs" className="rounded-sm transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/20">
               Docs
             </Link>
             <a
               href={REPO}
               target="_blank"
               rel="noopener noreferrer"
-              className="hover:text-ink transition-colors"
+              className="rounded-sm transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/20"
             >
               GitHub
             </a>
-            <Link href="/app" className="hover:text-ink transition-colors">
+            <Link href="/app" className="rounded-sm transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/20">
               Launch app
             </Link>
           </div>

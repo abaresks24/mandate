@@ -38,7 +38,7 @@ export function AppTopBar() {
                 href={l.href}
                 aria-current={active ? "page" : undefined}
                 className={cn(
-                  "border-b-2 pb-0.5 text-sm transition-colors",
+                  "border-b-2 pb-0.5 text-sm transition-colors rounded-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/20",
                   active
                     ? "border-near font-semibold text-ink"
                     : "border-transparent text-muted hover:text-ink"

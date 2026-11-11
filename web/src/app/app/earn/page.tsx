@@ -106,12 +106,10 @@ export default function Earn() {
   }
 
   return (
-    <div className="flex flex-col gap-12">
+    <div className="flex flex-col gap-16">
       <header>
-        <h1 className="display text-4xl font-semibold leading-tight text-ink sm:text-5xl">
-          Earn
-        </h1>
-        <p className="mt-3 max-w-2xl text-lg leading-relaxed text-muted">
+        <h1 className="page-h1">Earn</h1>
+        <p className="page-lede">
           Describe what you want. The agent proposes a strategy that fits inside
           your on-chain mandate — nothing outside the rules can run.
         </p>
@@ -119,10 +117,7 @@ export default function Earn() {
 
       {/* Prompt input */}
       <form onSubmit={onSubmit} className="flex flex-col gap-4">
-        <label
-          htmlFor="brief"
-          className="text-xs font-medium uppercase tracking-wider text-muted"
-        >
+        <label htmlFor="brief" className="label">
           Your brief
         </label>
         <div className="flex flex-col gap-3 sm:flex-row">
@@ -131,7 +126,7 @@ export default function Earn() {
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             placeholder="Describe what you want, e.g. '5,000 USDC, around 8%, low risk'"
-            className="flex-1 rounded-lg border border-hairline bg-paper px-4 py-3 text-base text-ink placeholder:text-muted/70 focus:border-ink/40 focus:outline-none"
+            className="input flex-1 px-4 py-3 text-base"
           />
           <Button type="submit" variant="primary" size="lg" disabled={loading}>
             {loading ? "Drafting…" : "Propose a strategy →"}
@@ -140,7 +135,7 @@ export default function Earn() {
         <button
           type="button"
           onClick={() => setPrompt(EXAMPLE_BRIEF)}
-          className="self-start text-left text-sm text-muted underline-offset-4 hover:text-ink hover:underline"
+          className="focusable self-start text-left text-sm text-muted underline-offset-4 hover:text-ink hover:underline"
         >
           Try: &ldquo;{EXAMPLE_BRIEF}&rdquo;
         </button>
@@ -152,7 +147,7 @@ export default function Earn() {
 
         {!loading && error && (
           <div className="rounded-xl border border-danger/30 bg-danger/5 p-6">
-            <p className="text-sm text-danger">{error}</p>
+            <p className="text-sm leading-relaxed text-danger">{error}</p>
           </div>
         )}
 
@@ -178,7 +173,7 @@ export default function Earn() {
         )}
 
         {!loading && !error && !result && (
-          <div className="max-w-md">
+          <div className="max-w-md rounded-xl border border-dashed border-hairline p-8">
             <h2 className="text-base font-semibold text-ink">
               Your proposed strategy will appear here
             </h2>
@@ -197,16 +192,16 @@ export default function Earn() {
 function LoadingState() {
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-2 text-sm text-muted">
+      <div className="live-ind">
         <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-near" aria-hidden />
         Drafting a strategy and scoring protocol risk…
       </div>
-      <div className="rounded-xl border border-hairline p-6">
-        <div className="h-7 w-48 animate-pulse rounded bg-mist" />
-        <div className="mt-3 h-4 w-full max-w-xl animate-pulse rounded bg-mist" />
+      <div className="surface-card p-6">
+        <div className="skeleton h-7 w-48 rounded" />
+        <div className="skeleton mt-3 h-4 w-full max-w-xl rounded" />
         <div className="mt-6 space-y-3 border-t border-hairline pt-6">
-          <div className="h-4 w-full animate-pulse rounded bg-mist" />
-          <div className="h-4 w-5/6 animate-pulse rounded bg-mist" />
+          <div className="skeleton h-4 w-full rounded" />
+          <div className="skeleton h-4 w-5/6 rounded" />
         </div>
       </div>
     </div>
@@ -216,14 +211,14 @@ function LoadingState() {
 function RefusedState({ reason, code }: { reason: string; code: string }) {
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-2 text-sm text-muted">
+      <div className="live-ind">
         <span className="h-1.5 w-1.5 rounded-full bg-danger" aria-hidden />
         The agent declined this brief
       </div>
-      <div className="rounded-xl border border-hairline p-6">
+      <div className="surface-card p-6">
         <h2 className="text-xl font-semibold text-ink">No strategy proposed</h2>
         <p className="mt-3 max-w-2xl text-base leading-relaxed text-muted">{reason}</p>
-        <p className="mt-4 font-mono text-xs uppercase tracking-wider text-muted">
+        <p className="num mt-4 text-xs uppercase tracking-wider text-muted">
           reason: {code}
         </p>
       </div>
@@ -268,27 +263,23 @@ function ProposalView(props: {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-2 text-sm text-muted">
+      <div className="live-ind">
         <span className="h-1.5 w-1.5 rounded-full bg-near" aria-hidden />
         Proposed strategy
       </div>
 
-      <div className="rounded-xl border border-hairline p-6 sm:p-8">
+      <div className="surface-card p-6 sm:p-8">
         {/* Headline */}
         <div className="flex flex-wrap items-end justify-between gap-6 border-b border-hairline pb-6">
           <div>
-            <div className="text-xs font-medium uppercase tracking-wider text-muted">
-              Expected APY
-            </div>
-            <div className="mt-1 font-mono text-5xl font-semibold text-near">
+            <div className="label">Expected APY</div>
+            <div className="num mt-1 text-5xl font-semibold text-near">
               {pct(s.expectedApyBps)}
             </div>
           </div>
           <div className="text-right">
-            <div className="text-xs font-medium uppercase tracking-wider text-muted">
-              Risk level
-            </div>
-            <div className="mt-1 font-mono text-3xl font-semibold text-ink">
+            <div className="label">Risk level</div>
+            <div className="num mt-1 text-3xl font-semibold text-ink">
               {s.riskLevel}
             </div>
           </div>
@@ -303,33 +294,33 @@ function ProposalView(props: {
 
         {/* Allocation table */}
         <div className="mt-8 overflow-x-auto">
-          <table className="w-full border-collapse text-left text-sm">
+          <table className="data-table text-sm">
             <thead>
-              <tr className="border-b border-hairline text-xs uppercase tracking-wider text-muted">
-                <th className="py-2 pr-4 font-medium">Allocation</th>
-                <th className="py-2 pr-4 font-medium">Chain</th>
-                <th className="py-2 pr-4 font-medium">Source of yield</th>
-                <th className="py-2 pr-4 text-right font-medium">APY</th>
-                <th className="py-2 pr-4 text-right font-medium">Weight</th>
-                <th className="py-2 text-right font-medium">Risk</th>
+              <tr>
+                <th>Allocation</th>
+                <th>Chain</th>
+                <th>Source of yield</th>
+                <th className="text-right">APY</th>
+                <th className="text-right">Weight</th>
+                <th className="text-right">Risk</th>
               </tr>
             </thead>
             <tbody>
               {s.allocations.map((a) => (
-                <tr key={a.protocol} className="border-b border-hairline align-top">
-                  <td className="py-3 pr-4 font-medium text-ink">{a.label}</td>
-                  <td className="py-3 pr-4 text-muted">{a.chain}</td>
-                  <td className="py-3 pr-4 text-muted">USDC {sourceWord(a)}</td>
-                  <td className="py-3 pr-4 text-right font-mono text-ink">
+                <tr key={a.protocol}>
+                  <td className="font-medium text-ink">{a.label}</td>
+                  <td className="text-muted">{a.chain}</td>
+                  <td className="text-muted">USDC {sourceWord(a)}</td>
+                  <td className="num text-right text-ink">
                     {(a.apyBps / 100).toFixed(1)}%
                     {a.apyMarket && (
-                      <div className="font-sans text-[10px] font-normal text-muted">
+                      <div className="font-sans text-[10px] font-normal normal-nums text-muted">
                         {a.apyMarket}
                       </div>
                     )}
                   </td>
-                  <td className="py-3 pr-4 text-right font-mono text-ink">{a.weightPct}%</td>
-                  <td className="py-3 text-right font-mono text-ink">
+                  <td className="num text-right text-ink">{a.weightPct}%</td>
+                  <td className="num text-right text-ink">
                     {a.riskScore}
                     <span className="text-muted">/100</span>
                   </td>
@@ -339,7 +330,7 @@ function ProposalView(props: {
           </table>
         </div>
 
-        <p className="mt-2 text-xs text-muted">
+        <p className="mt-2 text-xs leading-relaxed text-muted">
           APYs are current live rates (DefiLlama); the blended figure is weighted by
           allocation.
         </p>
@@ -391,9 +382,7 @@ function sourceWord(a: Allocation) {
 function DetailPanel({ strategy }: { strategy: ProposedStrategy }) {
   return (
     <div className="mt-8 border-t border-hairline pt-8">
-      <h3 className="text-xs font-medium uppercase tracking-wider text-muted">
-        How this strategy works
-      </h3>
+      <h3 className="label">How this strategy works</h3>
       <div className="mt-6 flex flex-col gap-8">
         {strategy.allocations.map((a) => (
           <div key={a.protocol} className="flex flex-col gap-4">
@@ -408,50 +397,40 @@ function DetailPanel({ strategy }: { strategy: ProposedStrategy }) {
                   {a.apyMarket ? ` · ${a.apyMarket} market (live)` : " (indicative)"}
                 </div>
               </div>
-              <span className="whitespace-nowrap font-mono text-sm text-ink">
+              <span className="num whitespace-nowrap text-sm text-ink">
                 {a.weightPct}% · risk {a.riskScore}/100 ({a.riskLabel})
               </span>
             </div>
 
             <div>
-              <div className="text-xs font-medium uppercase tracking-wider text-muted">
-                Where the yield comes from
-              </div>
+              <div className="label">Where the yield comes from</div>
               <p className="mt-1 text-sm leading-relaxed text-ink">{a.sourceOfYield}</p>
             </div>
 
             <div>
-              <div className="text-xs font-medium uppercase tracking-wider text-muted">
-                Key risk to watch
-              </div>
+              <div className="label">Key risk to watch</div>
               <p className="mt-1 text-sm leading-relaxed text-ink">{a.keyRisk}</p>
             </div>
 
             <div>
-              <div className="text-xs font-medium uppercase tracking-wider text-muted">
-                Why this risk score
-              </div>
+              <div className="label">Why this risk score</div>
               <p className="mt-1 text-sm leading-relaxed text-ink">{a.explanation}</p>
-              <table className="mt-3 w-full max-w-md border-collapse text-left text-xs">
+              <table className="data-table mt-3 max-w-md text-xs">
                 <thead>
-                  <tr className="border-b border-hairline text-muted">
-                    <th className="py-1 pr-4 font-medium uppercase tracking-wider">Factor</th>
-                    <th className="py-1 pr-4 text-right font-medium uppercase tracking-wider">
-                      Weight
-                    </th>
-                    <th className="py-1 text-right font-medium uppercase tracking-wider">
-                      Contribution
-                    </th>
+                  <tr>
+                    <th>Factor</th>
+                    <th className="text-right">Weight</th>
+                    <th className="text-right">Contribution</th>
                   </tr>
                 </thead>
                 <tbody>
                   {a.riskFactors.map((f) => (
-                    <tr key={f.factor} className="border-b border-hairline">
-                      <td className="py-1 pr-4 text-muted">{f.factor}</td>
-                      <td className="py-1 pr-4 text-right font-mono text-muted">
+                    <tr key={f.factor}>
+                      <td className="py-1.5 text-muted">{f.factor}</td>
+                      <td className="num py-1.5 text-right text-muted">
                         {Math.round(f.weight * 100)}%
                       </td>
-                      <td className="py-1 text-right font-mono text-ink">
+                      <td className="num py-1.5 text-right text-ink">
                         {f.contribution.toFixed(1)}
                       </td>
                     </tr>
@@ -461,9 +440,7 @@ function DetailPanel({ strategy }: { strategy: ProposedStrategy }) {
             </div>
 
             <div>
-              <div className="text-xs font-medium uppercase tracking-wider text-muted">
-                How it executes on-chain
-              </div>
+              <div className="label">How it executes on-chain</div>
               <p className="mt-1 text-sm leading-relaxed text-ink">{a.mechanics}</p>
             </div>
           </div>
@@ -471,9 +448,7 @@ function DetailPanel({ strategy }: { strategy: ProposedStrategy }) {
 
         {/* Mandate mapping */}
         <div className="border-t border-hairline pt-6">
-          <div className="text-xs font-medium uppercase tracking-wider text-muted">
-            The on-chain mandate that bounds this
-          </div>
+          <div className="label">The on-chain mandate that bounds this</div>
           <dl className="mt-3 grid grid-cols-1 gap-x-8 gap-y-2 text-sm sm:grid-cols-2">
             <MandateRow label="Target APY" value={pct(strategy.mandate.target_apy_bps)} />
             <MandateRow label="Max risk score" value={`${strategy.mandate.max_risk_score}/100`} />
@@ -501,7 +476,7 @@ function MandateRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex items-baseline justify-between gap-4 border-b border-hairline py-1">
       <dt className="text-muted">{label}</dt>
-      <dd className="text-right font-mono text-ink">{value}</dd>
+      <dd className="num text-right text-ink">{value}</dd>
     </div>
   );
 }
@@ -515,9 +490,7 @@ function DiscussPanel(props: {
 }) {
   return (
     <div className="mt-8 border-t border-hairline pt-8">
-      <h3 className="text-xs font-medium uppercase tracking-wider text-muted">
-        Discuss &amp; refine
-      </h3>
+      <h3 className="label">Discuss &amp; refine</h3>
       {props.thread.length > 0 && (
         <div className="mt-4 flex flex-col gap-3">
           {props.thread.map((t, i) => (
@@ -544,7 +517,7 @@ function DiscussPanel(props: {
           value={props.refineMsg}
           onChange={(e) => props.setRefineMsg(e.target.value)}
           placeholder="e.g. 'lower the risk', 'more on NEAR', 'what if I accept 10%?'"
-          className="flex-1 rounded-lg border border-hairline bg-paper px-4 py-2.5 text-sm text-ink placeholder:text-muted/70 focus:border-ink/40 focus:outline-none"
+          className="input flex-1 px-4"
         />
         <Button type="submit" variant="secondary" disabled={props.refining}>
           {props.refining ? "Sending…" : "Send"}
@@ -593,9 +566,7 @@ function LaunchPanel({ strategy }: { strategy: ProposedStrategy }) {
 
   return (
     <div className="mt-8 border-t border-hairline pt-8">
-      <h3 className="text-xs font-medium uppercase tracking-wider text-muted">
-        Launch this strategy
-      </h3>
+      <h3 className="label">Launch this strategy</h3>
 
       <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink">
         Launching registers an <span className="font-medium">on-chain mandate</span> — the rules
@@ -622,9 +593,7 @@ function LaunchPanel({ strategy }: { strategy: ProposedStrategy }) {
 
       {/* The mechanism */}
       <div className="mt-8">
-        <div className="text-xs font-medium uppercase tracking-wider text-muted">
-          How execution is secured
-        </div>
+        <div className="label">How execution is secured</div>
         <ol className="mt-3 flex flex-col gap-3 text-sm text-ink sm:flex-row sm:items-stretch">
           <Step n={1} title="Mandate set" body="Rules are written on-chain. The vault enforces them." />
           <Arrow />
@@ -643,14 +612,12 @@ function LaunchPanel({ strategy }: { strategy: ProposedStrategy }) {
       </div>
 
       {/* Real proofs */}
-      <div className="mt-8 rounded-lg border border-hairline bg-mist/50 p-5">
-        <div className="text-xs font-medium uppercase tracking-wider text-muted">
-          This mechanism is already live
-        </div>
+      <div className="mt-8 rounded-xl border border-hairline bg-mist p-5">
+        <div className="label">This mechanism is already live</div>
         <ul className="mt-3 flex flex-col gap-2 text-sm text-ink">
           <li className="flex items-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-near" aria-hidden />
-            Committee action <span className="font-mono">a1</span> verified on the coordinator.
+            Committee action <span className="num">a1</span> verified on the coordinator.
           </li>
           <li className="flex items-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-near" aria-hidden />
@@ -661,7 +628,7 @@ function LaunchPanel({ strategy }: { strategy: ProposedStrategy }) {
           href={CROSSCHAIN.etherscan}
           target="_blank"
           rel="noopener noreferrer"
-          className="mt-3 inline-flex items-center gap-1.5 font-mono text-xs text-muted hover:text-ink"
+          className="ext-link mt-3"
         >
           {CROSSCHAIN.sepoliaTx.slice(0, 18)}…{CROSSCHAIN.sepoliaTx.slice(-10)}
           <ArrowUpRight className="h-3.5 w-3.5" />
@@ -681,14 +648,14 @@ function LaunchPanel({ strategy }: { strategy: ProposedStrategy }) {
             </p>
           </>
         ) : state.phase === "done" ? (
-          <div className="rounded-lg border border-near/40 bg-near/5 p-5">
+          <div className="rounded-xl border border-near/40 bg-near/5 p-5">
             <div className="flex items-center gap-2 text-sm font-medium text-ink">
               <span className="h-1.5 w-1.5 rounded-full bg-near" aria-hidden />
               Mandate registered on-chain
             </div>
             <p className="mt-2 max-w-2xl text-sm leading-relaxed text-muted">
               Your mandate is now recorded under{" "}
-              <span className="font-mono text-ink">{accountId}</span> on the registry
+              <span className="num text-ink">{accountId}</span> on the registry
               contract. This write is real and wallet-signed.
             </p>
             <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2">
@@ -697,7 +664,7 @@ function LaunchPanel({ strategy }: { strategy: ProposedStrategy }) {
                   href={txExplorerUrl(state.hash)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 font-mono text-xs text-muted hover:text-ink"
+                  className="ext-link"
                 >
                   {state.hash.slice(0, 10)}…{state.hash.slice(-8)}
                   <ArrowUpRight className="h-3.5 w-3.5" />
@@ -705,7 +672,7 @@ function LaunchPanel({ strategy }: { strategy: ProposedStrategy }) {
               )}
               <Link
                 href="/app/portfolio"
-                className="text-sm font-medium text-ink underline-offset-4 hover:underline"
+                className="focusable text-sm font-medium text-ink underline-offset-4 hover:underline"
               >
                 View in Portfolio →
               </Link>
@@ -726,8 +693,8 @@ function LaunchPanel({ strategy }: { strategy: ProposedStrategy }) {
               <p className="text-xs leading-relaxed text-danger">{state.message}</p>
             )}
             <p className="text-xs leading-relaxed text-muted">
-              Connected as <span className="font-mono text-ink">{accountId}</span>. Deploying
-              signs a real <span className="font-mono">register_mandate</span> transaction
+              Connected as <span className="num text-ink">{accountId}</span>. Deploying
+              signs a real <span className="num">register_mandate</span> transaction
               (0.01 NEAR attached) that records this mandate on-chain under your account.
               Funding and deploying the per-mandate vault is the documented next step, proven
               via the CLI scripts; everything downstream (committee verification, cross-chain
@@ -742,8 +709,8 @@ function LaunchPanel({ strategy }: { strategy: ProposedStrategy }) {
 
 function Step({ n, title, body }: { n: number; title: string; body: string }) {
   return (
-    <li className="flex-1 rounded-lg border border-hairline p-4">
-      <div className="font-mono text-xs text-muted">{n}</div>
+    <li className="flex-1 rounded-xl border border-hairline p-4">
+      <div className="num text-xs text-muted">{n}</div>
       <div className="mt-1 font-medium text-ink">{title}</div>
       <p className="mt-1 text-xs leading-relaxed text-muted">{body}</p>
     </li>

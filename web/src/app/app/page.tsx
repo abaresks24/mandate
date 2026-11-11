@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { cn } from "@/lib/cn";
 import { live } from "@/lib/near";
 import { useLive } from "@/lib/useLive";
 import { MANDATE } from "@/mock/mandate";
@@ -53,10 +54,8 @@ export default function Overview() {
     <div className="flex flex-col gap-16">
       {/* Header */}
       <header>
-        <h1 className="display text-4xl font-semibold leading-tight text-ink sm:text-5xl">
-          Overview
-        </h1>
-        <p className="mt-3 max-w-2xl text-lg leading-relaxed text-muted">
+        <h1 className="page-h1">Overview</h1>
+        <p className="page-lede">
           An AI agent earns yield within rules you set — verified by bonded
           guardians, never by blind trust.
         </p>
@@ -89,10 +88,8 @@ export default function Overview() {
       {/* Strategy universe */}
       <section>
         <div className="mb-6">
-          <h2 className="text-xl font-semibold tracking-tight text-ink">
-            Strategy universe
-          </h2>
-          <p className="mt-1 max-w-2xl text-sm text-muted">
+          <h2 className="section-h2">Strategy universe</h2>
+          <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">
             The agent composes across real markets pulled live from DefiLlama —
             lending, RWA, staking, BTC, LP and more. Rates and TVL are current;
             risk is scored deterministically.
@@ -116,13 +113,9 @@ function Metric({
 }) {
   return (
     <div className="bg-paper p-6">
-      <div className="text-xs font-medium uppercase tracking-wider text-muted">
-        {label}
-      </div>
-      <div className="mt-3 font-mono text-3xl font-semibold tabular-nums text-ink">
-        {value}
-      </div>
-      <div className="mt-2 text-xs text-muted">{hint}</div>
+      <div className="label">{label}</div>
+      <div className="num mt-3 text-3xl font-semibold text-ink">{value}</div>
+      <div className="mt-2 text-xs leading-relaxed text-muted">{hint}</div>
     </div>
   );
 }
@@ -159,17 +152,18 @@ function FilterRow({
 }) {
   return (
     <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
-      <span className="text-xs uppercase tracking-wider text-muted">{label}</span>
+      <span className="label">{label}</span>
       {options.map((o) => (
         <button
           key={o}
           type="button"
           onClick={() => onChange(o)}
-          className={
+          className={cn(
+            "focusable transition-colors",
             value === o
               ? "font-medium text-ink underline underline-offset-4 decoration-near"
-              : "text-muted transition-colors hover:text-ink"
-          }
+              : "text-muted hover:text-ink"
+          )}
         >
           {o}
         </button>
@@ -210,7 +204,7 @@ function StrategyTable() {
     return (
       <div className="flex flex-col gap-3">
         {Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className="h-10 animate-pulse rounded bg-mist" />
+          <div key={i} className="skeleton h-10 rounded" />
         ))}
       </div>
     );
@@ -252,7 +246,7 @@ function StrategyTable() {
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search protocol or market…"
-          className="w-full max-w-xs rounded-lg border border-hairline bg-paper px-3 py-2 text-sm text-ink placeholder:text-muted focus:border-ink focus:outline-none"
+          className="input max-w-xs"
         />
         <FilterRow label="Chain" options={chains} value={chain} onChange={setChain} />
         <FilterRow label="Category" options={categories} value={category} onChange={setCategory} />
@@ -260,56 +254,56 @@ function StrategyTable() {
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-left">
+        <table className="data-table">
           <thead>
-            <tr className="border-b border-hairline text-xs font-medium uppercase tracking-wider text-muted">
-              <th className="py-3 pr-4 font-medium">Protocol</th>
-              <th className="py-3 pr-4 font-medium">Market</th>
-              <th className="py-3 pr-4 font-medium">Chain</th>
-              <th className="py-3 pr-4 font-medium">Category</th>
-              <th className="py-3 pr-4 font-medium">Exposure</th>
-              <th className="py-3 pr-4 text-right font-medium">
-                <button type="button" onClick={() => toggleSort("apyBps")} className="uppercase tracking-wider hover:text-ink">
+            <tr>
+              <th>Protocol</th>
+              <th>Market</th>
+              <th>Chain</th>
+              <th>Category</th>
+              <th>Exposure</th>
+              <th className="text-right">
+                <button type="button" onClick={() => toggleSort("apyBps")} className="th-sort focusable">
                   APY{caret("apyBps")}
                 </button>
               </th>
-              <th className="py-3 pr-4 text-right font-medium">
-                <button type="button" onClick={() => toggleSort("tvlUsd")} className="uppercase tracking-wider hover:text-ink">
+              <th className="text-right">
+                <button type="button" onClick={() => toggleSort("tvlUsd")} className="th-sort focusable">
                   TVL{caret("tvlUsd")}
                 </button>
               </th>
-              <th className="py-3 pr-4 text-right font-medium">
-                <button type="button" onClick={() => toggleSort("riskScore")} className="uppercase tracking-wider hover:text-ink">
+              <th className="text-right">
+                <button type="button" onClick={() => toggleSort("riskScore")} className="th-sort focusable">
                   Risk{caret("riskScore")}
                 </button>
               </th>
-              <th className="py-3 font-medium" />
+              <th />
             </tr>
           </thead>
           <tbody>
             {sorted.map((s, i) => (
-              <tr key={s.name + s.market + s.chain + i} className="border-b border-hairline last:border-0">
-                <td className="py-3 pr-4 font-medium text-ink">
+              <tr key={s.name + s.market + s.chain + i}>
+                <td className="font-medium text-ink">
                   {s.name}
                   {s.live && <span className="ml-2 text-xs font-normal text-muted">live</span>}
                 </td>
-                <td className="py-3 pr-4 font-mono text-xs text-muted">{s.market}</td>
-                <td className="py-3 pr-4 text-sm text-muted">{s.chain}</td>
-                <td className="py-3 pr-4 text-sm text-muted">{s.category}</td>
-                <td className="py-3 pr-4 text-sm uppercase text-muted">{s.exposure}</td>
-                <td className="py-3 pr-4 text-right font-mono tabular-nums text-ink">
+                <td className="num text-xs text-muted">{s.market}</td>
+                <td className="text-sm text-muted">{s.chain}</td>
+                <td className="text-sm text-muted">{s.category}</td>
+                <td className="text-sm uppercase text-muted">{s.exposure}</td>
+                <td className="num text-right text-ink">
                   {(s.apyBps / 100).toFixed(2)}%
                 </td>
-                <td className="py-3 pr-4 text-right font-mono tabular-nums text-muted">
+                <td className="num text-right text-muted">
                   {tvlShort(s.tvlUsd)}
                 </td>
-                <td className="py-3 pr-4 text-right text-sm text-muted">{s.risk}</td>
-                <td className="py-3 text-right">
+                <td className="text-right text-sm text-muted">{s.risk}</td>
+                <td className="text-right">
                   <Link
                     href={`/app/earn?seed=${encodeURIComponent(
                       `Put my USDC to work via ${s.name} ${s.market} on ${s.chain}`,
                     )}`}
-                    className="text-sm text-muted underline-offset-4 hover:text-ink hover:underline"
+                    className="focusable text-sm text-muted underline-offset-4 hover:text-ink hover:underline"
                   >
                     Earn →
                   </Link>
@@ -320,7 +314,7 @@ function StrategyTable() {
         </table>
       </div>
 
-      <p className="mt-3 text-xs text-muted">
+      <p className="mt-3 text-xs leading-relaxed text-muted">
         {sorted.length} of {rows.length} live markets from DefiLlama, refreshed every
         minute. A protocol like Morpho runs many markets — each row is a specific named market.
       </p>

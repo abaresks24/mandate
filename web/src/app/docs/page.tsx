@@ -33,15 +33,13 @@ export default function Docs() {
         <div className="grid gap-12 lg:grid-cols-[200px_1fr] lg:gap-16">
           {/* TOC */}
           <aside className="lg:sticky lg:top-24 lg:self-start">
-            <p className="mb-4 text-xs font-medium uppercase tracking-wider text-muted">
-              Documentation
-            </p>
+            <p className="label mb-4">Documentation</p>
             <nav className="flex flex-col gap-2 text-sm">
               {NAV.map((n) => (
                 <a
                   key={n.id}
                   href={`#${n.id}`}
-                  className="text-muted transition-colors hover:text-ink"
+                  className="focusable text-muted transition-colors hover:text-ink"
                 >
                   {n.label}
                 </a>
@@ -52,10 +50,8 @@ export default function Docs() {
           {/* Content */}
           <article className="max-w-2xl">
             <header className="mb-14">
-              <h1 className="display text-4xl font-semibold leading-tight text-ink sm:text-5xl">
-                YieldAI documentation
-              </h1>
-              <p className="mt-4 text-lg leading-relaxed text-muted">
+              <h1 className="page-h1">YieldAI documentation</h1>
+              <p className="mt-3 text-lg leading-relaxed text-muted">
                 An AI agent that manages your yield — and that you never have to
                 trust. Its power is bounded on-chain, every risky move is checked
                 by a bonded guardian committee, and the bond is insurance.
@@ -349,7 +345,7 @@ function Section({
   return (
     <section id={id} className="scroll-mt-24 border-t border-hairline py-12 first:border-t-0 first:pt-0">
       <div className="mb-5 flex items-baseline gap-3">
-        <span className="font-mono text-xs text-muted">{label}</span>
+        <span className="num text-xs text-muted">{label}</span>
         <h2 className="text-2xl font-semibold tracking-tight text-ink">{title}</h2>
       </div>
       <div className="flex flex-col gap-4">{children}</div>
@@ -390,7 +386,7 @@ function Ol({ items }: { items: React.ReactNode[] }) {
     <ol className="flex flex-col gap-3">
       {items.map((it, i) => (
         <li key={i} className="flex gap-3 text-base leading-relaxed text-muted">
-          <span className="font-mono text-sm text-muted">{String(i + 1).padStart(2, "0")}</span>
+          <span className="num text-sm text-muted">{String(i + 1).padStart(2, "0")}</span>
           <span>{it}</span>
         </li>
       ))}
@@ -407,12 +403,12 @@ function Pre({ children }: { children: React.ReactNode }) {
 function Table({ rows }: { rows: [string, string][] }) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full border-collapse text-left text-sm">
+      <table className="data-table text-sm">
         <tbody>
           {rows.map(([k, v]) => (
-            <tr key={k} className="border-b border-hairline last:border-0">
-              <td className="py-3 pr-6 font-medium text-ink">{k}</td>
-              <td className="py-3 font-mono text-muted">{v}</td>
+            <tr key={k}>
+              <td className="font-medium text-ink">{k}</td>
+              <td className="num text-muted">{v}</td>
             </tr>
           ))}
         </tbody>

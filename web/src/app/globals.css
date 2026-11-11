@@ -29,6 +29,91 @@
   }
 }
 
+/* ────────────────────────────────────────────────────────────────────────
+   Shared presentational primitives — one system across landing, app & docs.
+   Minimal on purpose: enforce the type / table / control / surface rhythm
+   without re-abstracting the layout. These do NOT change any data logic.
+   ──────────────────────────────────────────────────────────────────────── */
+@layer components {
+  /* The single muted, uppercase-tracked label used everywhere. */
+  .label {
+    @apply text-xs font-medium uppercase tracking-wider text-muted;
+  }
+
+  /* Consistent page H1 / section H2. */
+  .page-h1 {
+    @apply display text-4xl font-semibold leading-tight text-ink sm:text-5xl;
+  }
+  .page-lede {
+    @apply mt-3 max-w-2xl text-lg leading-relaxed text-muted;
+  }
+  .section-h2 {
+    @apply text-xl font-semibold tracking-tight text-ink;
+  }
+
+  /* All numeric/mono values: tabular, so columns and metrics align. */
+  .num {
+    @apply font-mono tabular-nums;
+  }
+
+  /* One flat surface treatment: rounded-xl, hairline, no heavy shadow. */
+  .surface-card {
+    @apply rounded-xl border border-hairline bg-paper;
+  }
+
+  /* ── One table style, shared by every table in the product ── */
+  .data-table {
+    @apply w-full border-collapse text-left;
+  }
+  .data-table thead th {
+    @apply border-b border-hairline py-3 pr-4 text-xs font-medium uppercase
+      tracking-wider text-muted;
+  }
+  .data-table thead th:last-child {
+    @apply pr-0;
+  }
+  .data-table tbody td {
+    @apply border-b border-hairline py-3 pr-4 align-middle;
+  }
+  .data-table tbody td:last-child {
+    @apply pr-0;
+  }
+  .data-table tbody tr:last-child td {
+    @apply border-0;
+  }
+  .data-table tbody tr {
+    @apply transition-colors hover:bg-mist;
+  }
+  /* A sortable header button that keeps the uppercase label legible. */
+  .th-sort {
+    @apply uppercase tracking-wider transition-colors hover:text-ink
+      focus-visible:text-ink focus-visible:outline-none;
+  }
+
+  /* ── One control style: text inputs & the search box ── */
+  .input {
+    @apply w-full rounded-lg border border-hairline bg-paper px-3.5 py-2.5
+      text-sm text-ink transition-colors placeholder:text-muted/70
+      hover:border-muted/40 focus:border-ink focus:outline-none
+      focus:ring-1 focus:ring-ink/10;
+  }
+
+  /* Consistent focus-visible ring for the bare link/toggle buttons. */
+  .focusable {
+    @apply rounded-sm focus-visible:outline-none focus-visible:ring-2
+      focus-visible:ring-ink/20;
+  }
+
+  /* Small, muted "live" indicator + external-link affordance. */
+  .live-ind {
+    @apply inline-flex items-center gap-2 text-sm text-muted;
+  }
+  .ext-link {
+    @apply inline-flex items-center gap-1.5 font-mono text-xs text-muted
+      transition-colors hover:text-ink;
+  }
+}
+
 /* --- Shimmer skeleton (polished loading state) --- */
 .skeleton {
   position: relative;
