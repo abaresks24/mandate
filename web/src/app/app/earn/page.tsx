@@ -303,6 +303,7 @@ function ProposalView(props: {
                 <th className="py-2 pr-4 font-medium">Allocation</th>
                 <th className="py-2 pr-4 font-medium">Chain</th>
                 <th className="py-2 pr-4 font-medium">Source of yield</th>
+                <th className="py-2 pr-4 text-right font-medium">APY</th>
                 <th className="py-2 pr-4 text-right font-medium">Weight</th>
                 <th className="py-2 text-right font-medium">Risk</th>
               </tr>
@@ -313,6 +314,9 @@ function ProposalView(props: {
                   <td className="py-3 pr-4 font-medium text-ink">{a.label}</td>
                   <td className="py-3 pr-4 text-muted">{a.chain}</td>
                   <td className="py-3 pr-4 text-muted">USDC {sourceWord(a)}</td>
+                  <td className="py-3 pr-4 text-right font-mono text-ink">
+                    {(a.apyBps / 100).toFixed(1)}%
+                  </td>
                   <td className="py-3 pr-4 text-right font-mono text-ink">{a.weightPct}%</td>
                   <td className="py-3 text-right font-mono text-ink">
                     {a.riskScore}
@@ -323,6 +327,11 @@ function ProposalView(props: {
             </tbody>
           </table>
         </div>
+
+        <p className="mt-2 text-xs text-muted">
+          APYs are current live rates (DefiLlama); the blended figure is weighted by
+          allocation.
+        </p>
 
         <p className="mt-6 max-w-2xl text-sm leading-relaxed text-muted">{s.riskBreakdown}</p>
 

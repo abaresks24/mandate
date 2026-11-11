@@ -10,6 +10,13 @@
 import { CATALOGUE, CATALOGUE_KEYS, type ProtocolCatalogueEntry } from "./catalogue";
 import { chatJson, readLlmConfig, type ChatMessage, type LlmConfig } from "./llm";
 import { riskLabel, scoreBreakdown, scoreProtocol, type RiskFactor } from "./risk";
+import { getLiveApyBps } from "./apy";
+
+// Live APY (bps) for a venue — DefiLlama rate if available, else the catalogue's
+// representative rate.
+function apyFor(key: string, live: Record<string, number>): number {
+  return live[key] ?? CATALOGUE[key]!.default_apy_bps;
+}
 
 // ---------------------------------------------------------------------------
 // Output contract (the JSON shape returned to the client).
@@ -41,6 +48,7 @@ export interface Allocation {
   category: string; // venue category (lending, LP, delta-neutral, …)
   exposure: string; // asset exposure you take on (stablecoin/near/eth/btc/…)
   keyRisk: string; // the characteristic risk of THIS venue type
+  apyBps: number; // this venue's current APY (live from DefiLlama when available)
 }
 
 // The characteristic risk of each venue category, in plain language.
@@ -123,17 +131,17 @@ interface LlmProposal {
 const MAX_REALISTIC_APY_BPS = 2500; // 25%
 const LOW_RISK_CAP = 25;
 
-function catalogueBrief(): string {
+function catalogueBrief(apys: Record<string, number>): string {
   return CATALOGUE_KEYS.map((k) => {
     const e = CATALOGUE[k]!;
-    const live = e.live ? "LIVE" : "roadmap";
+    const liveTag = e.live ? "LIVE" : "roadmap";
     return `- "${k}" — ${e.displayName} · ${e.chainLabel} · ${e.category} · exposure:${e.asset} · ~${(
-      e.default_apy_bps / 100
-    ).toFixed(1)}% APY · ${live}. ${e.sourceOfYield}`;
+      apyFor(k, apys) / 100
+    ).toFixed(1)}% APY · ${liveTag}. ${e.sourceOfYield}`;
   }).join("\n");
 }
 
-function systemPrompt(): string {
+function systemPrompt(apys: Record<string, number>): string {
   return [
     "You are YieldAI's strategy drafter. You convert a user's investment brief",
     "into a PROPOSED on-chain yield strategy. Respond ONLY with a JSON object.",
@@ -148,7 +156,7 @@ function systemPrompt(): string {
     "and writing an honest human explanation. Respond ONLY with a JSON object.",
     "",
     "THE YIELD UNIVERSE (each line: key · venue · chain · category · exposure · APY · LIVE/roadmap):",
-    catalogueBrief(),
+    catalogueBrief(apys),
     "",
     "DESIGN DIFFERENT STRATEGIES FOR DIFFERENT BRIEFS — do not default to one answer:",
     "- Read the user's RISK APPETITE: conservative → blue-chip lending / RWA / savings",
@@ -223,7 +231,10 @@ function sanitizeExplanation(llmText: string | undefined, entry: ProtocolCatalog
 }
 
 /** Build the structured proposal from a parsed LLM proposal. Shared by propose + refine. */
-export function assembleStrategy(parsed: LlmProposal): ProposeResult {
+export function assembleStrategy(
+  parsed: LlmProposal,
+  apys: Record<string, number> = {},
+): ProposeResult {
   if (parsed.realistic === false) {
     return {
       status: "refused",
@@ -294,10 +305,12 @@ export function assembleStrategy(parsed: LlmProposal): ProposeResult {
     const entry = CATALOGUE[key]!;
     const risk = scoreProtocol(entry.risk); // DETERMINISTIC
     const w = weights[i]!;
+    const apyBps = apyFor(key, apys); // live DefiLlama rate when available
     allowedProtocols.push(key);
     allowedChains.add(entry.chain);
-    blendedApy += (entry.default_apy_bps * w) / 100;
+    blendedApy += (apyBps * w) / 100;
     allocations.push({
+      apyBps,
       label: entry.displayName,
       protocol: key,
       chain: entry.chainLabel,
@@ -377,8 +390,9 @@ export async function proposeStrategy(brief: string, cfg?: LlmConfig): Promise<P
   }
 
   const config = cfg ?? readLlmConfig();
+  const apys = await getLiveApyBps();
   const messages: ChatMessage[] = [
-    { role: "system", content: systemPrompt() },
+    { role: "system", content: systemPrompt(apys) },
     { role: "user", content: brief },
   ];
 
@@ -396,7 +410,7 @@ export async function proposeStrategy(brief: string, cfg?: LlmConfig): Promise<P
     };
   }
 
-  return assembleStrategy(parsed);
+  return assembleStrategy(parsed, apys);
 }
 
 /** Refine: feed the prior strategy + the user's message back through the LLM. */
@@ -414,6 +428,7 @@ export async function refineStrategy(
     };
   }
   const config = cfg ?? readLlmConfig();
+  const apys = await getLiveApyBps();
 
   const priorSummary = JSON.stringify({
     summary: priorStrategy.summary,
@@ -426,7 +441,7 @@ export async function refineStrategy(
   });
 
   const messages: ChatMessage[] = [
-    { role: "system", content: systemPrompt() },
+    { role: "system", content: systemPrompt(apys) },
     { role: "user", content: `Original brief: ${brief}` },
     {
       role: "assistant",
@@ -452,5 +467,5 @@ export async function refineStrategy(
     };
   }
 
-  return assembleStrategy(parsed);
+  return assembleStrategy(parsed, apys);
 }
