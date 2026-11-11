@@ -7,8 +7,6 @@ import { MANDATE } from "@/mock/mandate";
 import { GUARDIANS } from "@/mock/guardians";
 import { bps } from "@/lib/format";
 import type { Mandate, GuardianRow } from "@/lib/types";
-import { CATALOGUE, CATALOGUE_KEYS } from "@/lib/earn/catalogue";
-import { scoreProtocol, riskLabel } from "@/lib/earn/risk";
 
 // USDC bonds are 6-dp fixed strings; sum into a human figure.
 function sumBondUsdc(rows: GuardianRow[]): number {
@@ -94,8 +92,9 @@ export default function Overview() {
             Strategy universe
           </h2>
           <p className="mt-1 max-w-2xl text-sm text-muted">
-            The agent composes across {CATALOGUE_KEYS.length} venues — stablecoin
-            lending, RWA, staking, BTC, LP and more — to fit each brief. A sample:
+            The agent composes across real markets pulled live from DefiLlama —
+            lending, RWA, staking, BTC, LP and more. Rates and TVL are current;
+            risk is scored deterministically.
           </p>
         </div>
 
@@ -127,33 +126,37 @@ function Metric({
   );
 }
 
-// A representative slice of the catalogue, spanning the risk spectrum.
-const SAMPLE_KEYS = [
-  "rhea",
-  "morpho-sepolia",
-  "aave",
-  "sdai",
-  "ethena-susde",
-  "lido-steth",
-  "lombard-lbtc",
-  "eigenlayer",
-];
+type UniverseRow = {
+  name: string;
+  market: string;
+  chain: string;
+  category: string;
+  exposure: string;
+  apyBps: number;
+  tvlUsd: number;
+  risk: string;
+  live: boolean;
+};
 
-type LiveApy = { apyBps: number; market: string };
+function tvlShort(n: number): string {
+  return n >= 1e9 ? `$${(n / 1e9).toFixed(1)}B` : `$${Math.max(1, Math.round(n / 1e6))}M`;
+}
 
 function StrategyTable() {
-  const [apys, setApys] = useState<Record<string, LiveApy>>({});
+  const [rows, setRows] = useState<UniverseRow[] | null>(null);
 
-  // Live APYs from DefiLlama, refreshed every 60s.
+  // The live market universe from DefiLlama, refreshed every 60s.
   useEffect(() => {
     let alive = true;
     const load = () =>
-      fetch("/api/apys")
+      fetch("/api/universe")
         .then((r) => r.json())
         .then((d) => {
-          if (alive) setApys(d.apys ?? {});
+          if (alive) setRows(d.venues ?? []);
         })
-        .catch(() => {});
+        .catch(() => {
+          if (alive) setRows([]);
+        });
     load();
     const id = setInterval(load, 60_000);
     return () => {
@@ -162,64 +165,58 @@ function StrategyTable() {
     };
   }, []);
 
-  const rows = SAMPLE_KEYS.map((k) => ({ k, e: CATALOGUE[k]! }))
-    .filter((x) => x.e)
-    .map(({ k, e }) => {
-      const la = apys[k];
-      const apyBps = la?.apyBps ?? e.default_apy_bps;
-      return {
-        name: e.displayName,
-        chain: e.chainLabel,
-        source: e.category,
-        exposure: e.asset,
-        apy: `${(apyBps / 100).toFixed(2)}%`,
-        market: la?.market,
-        risk: riskLabel(scoreProtocol(e.risk)),
-        live: e.live,
-      };
-    });
+  if (rows === null) {
+    return (
+      <div className="flex flex-col gap-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="h-10 animate-pulse rounded bg-mist" />
+        ))}
+      </div>
+    );
+  }
 
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse text-left">
         <thead>
           <tr className="border-b border-hairline text-xs font-medium uppercase tracking-wider text-muted">
-            <th className="py-3 pr-4 font-medium">Strategy</th>
+            <th className="py-3 pr-4 font-medium">Protocol</th>
+            <th className="py-3 pr-4 font-medium">Market</th>
             <th className="py-3 pr-4 font-medium">Chain</th>
-            <th className="py-3 pr-4 font-medium">Source of yield</th>
+            <th className="py-3 pr-4 font-medium">Category</th>
             <th className="py-3 pr-4 font-medium">Exposure</th>
             <th className="py-3 pr-4 text-right font-medium">APY</th>
+            <th className="py-3 pr-4 text-right font-medium">TVL</th>
             <th className="py-3 text-right font-medium">Risk</th>
           </tr>
         </thead>
         <tbody>
-          {rows.map((s) => (
-            <tr key={s.name + s.chain} className="border-b border-hairline last:border-0">
-              <td className="py-4 pr-4 font-medium text-ink">
+          {rows.map((s, i) => (
+            <tr key={s.name + s.market + s.chain + i} className="border-b border-hairline last:border-0">
+              <td className="py-3 pr-4 font-medium text-ink">
                 {s.name}
                 {s.live && (
                   <span className="ml-2 text-xs font-normal text-muted">live</span>
                 )}
               </td>
-              <td className="py-4 pr-4 text-sm text-muted">{s.chain}</td>
-              <td className="py-4 pr-4 text-sm text-muted">{s.source}</td>
-              <td className="py-4 pr-4 text-sm uppercase text-muted">{s.exposure}</td>
-              <td className="py-4 pr-4 text-right font-mono tabular-nums text-ink">
-                {s.apy}
-                {s.market && (
-                  <div className="font-sans text-[10px] font-normal text-muted">
-                    {s.market}
-                  </div>
-                )}
+              <td className="py-3 pr-4 font-mono text-xs text-muted">{s.market}</td>
+              <td className="py-3 pr-4 text-sm text-muted">{s.chain}</td>
+              <td className="py-3 pr-4 text-sm text-muted">{s.category}</td>
+              <td className="py-3 pr-4 text-sm uppercase text-muted">{s.exposure}</td>
+              <td className="py-3 pr-4 text-right font-mono tabular-nums text-ink">
+                {(s.apyBps / 100).toFixed(2)}%
               </td>
-              <td className="py-4 text-right text-sm text-muted">{s.risk}</td>
+              <td className="py-3 pr-4 text-right font-mono tabular-nums text-muted">
+                {tvlShort(s.tvlUsd)}
+              </td>
+              <td className="py-3 text-right text-sm text-muted">{s.risk}</td>
             </tr>
           ))}
         </tbody>
       </table>
       <p className="mt-3 text-xs text-muted">
-        Live APYs from DefiLlama, refreshed every minute. Protocols like Morpho run
-        many markets — the rate shown is the deepest (highest-TVL) market.
+        {rows.length} live markets from DefiLlama, refreshed every minute. A protocol
+        like Morpho runs many markets — each row is a specific named market.
       </p>
     </div>
   );
