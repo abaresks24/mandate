@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useWallet } from "@/components/wallet/WalletProvider";
 import { CROSSCHAIN } from "@/lib/near";
 import { registerMandate, txExplorerUrl } from "@/lib/registry";
+import { Donut, GrowthCurve, ApyBars, type Slice } from "@/components/StrategyVisuals";
 import type {
   Allocation,
   ProposedStrategy,
@@ -261,6 +262,21 @@ function ProposalView(props: {
     }
   }, [props.showLaunch]);
 
+  // Breakdown by protocol (merge markets of the same protocol) and by asset.
+  const byProtocol = new Map<string, number>();
+  const byAsset = new Map<string, number>();
+  for (const a of s.allocations) {
+    byProtocol.set(a.label, (byProtocol.get(a.label) ?? 0) + a.weightPct);
+    byAsset.set(a.exposure, (byAsset.get(a.exposure) ?? 0) + a.weightPct);
+  }
+  const protocolSlices: Slice[] = Array.from(byProtocol, ([label, value]) => ({ label, value })).sort(
+    (x, y) => y.value - x.value,
+  );
+  const assetSlices: Slice[] = Array.from(byAsset, ([label, value]) => ({
+    label: label.toUpperCase(),
+    value,
+  })).sort((x, y) => y.value - x.value);
+
   return (
     <div className="flex flex-col gap-6">
       <div className="live-ind">
@@ -292,48 +308,38 @@ function ProposalView(props: {
           </p>
         )}
 
-        {/* Allocation table */}
-        <div className="mt-8 overflow-x-auto">
-          <table className="data-table text-sm">
-            <thead>
-              <tr>
-                <th>Allocation</th>
-                <th>Chain</th>
-                <th>Source of yield</th>
-                <th className="text-right">APY</th>
-                <th className="text-right">Weight</th>
-                <th className="text-right">Risk</th>
-              </tr>
-            </thead>
-            <tbody>
-              {s.allocations.map((a) => (
-                <tr key={a.protocol}>
-                  <td className="font-medium text-ink">{a.label}</td>
-                  <td className="text-muted">{a.chain}</td>
-                  <td className="text-muted">USDC {sourceWord(a)}</td>
-                  <td className="num text-right text-ink">
-                    {(a.apyBps / 100).toFixed(1)}%
-                    {a.apyMarket && (
-                      <div className="font-sans text-[10px] font-normal normal-nums text-muted">
-                        {a.apyMarket}
-                      </div>
-                    )}
-                  </td>
-                  <td className="num text-right text-ink">{a.weightPct}%</td>
-                  <td className="num text-right text-ink">
-                    {a.riskScore}
-                    <span className="text-muted">/100</span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        {/* Breakdown — donuts */}
+        <div className="mt-8 grid gap-8 border-t border-hairline pt-8 sm:grid-cols-2">
+          <Donut title="Allocation by protocol" slices={protocolSlices} />
+          <Donut title="Exposure by asset" slices={assetSlices} />
         </div>
 
-        <p className="mt-2 text-xs leading-relaxed text-muted">
-          APYs are current live rates (DefiLlama); the blended figure is weighted by
-          allocation.
+        {/* Yield — per-allocation APY + projected growth */}
+        <div className="mt-10 grid gap-8 border-t border-hairline pt-8 lg:grid-cols-2">
+          <ApyBars
+            items={s.allocations.map((a) => ({
+              label: a.apyMarket ? `${a.label} · ${a.apyMarket}` : a.label,
+              apyBps: a.apyBps,
+              weightPct: a.weightPct,
+            }))}
+          />
+          <GrowthCurve apyBps={s.expectedApyBps} />
+        </div>
+
+        <p className="mt-3 text-xs leading-relaxed text-muted">
+          APYs are current live rates (DefiLlama); the blended figure and the projection
+          are weighted by allocation. The projection is illustrative, not a guarantee.
         </p>
+
+        {/* Each allocation, explained */}
+        <div className="mt-10 border-t border-hairline pt-8">
+          <div className="label mb-4">Each allocation, explained</div>
+          <div className="flex flex-col gap-4">
+            {s.allocations.map((a) => (
+              <AllocationExplain key={a.protocol} a={a} />
+            ))}
+          </div>
+        </div>
 
         <p className="mt-6 max-w-2xl text-sm leading-relaxed text-muted">{s.riskBreakdown}</p>
 
@@ -372,11 +378,37 @@ function ProposalView(props: {
   );
 }
 
-function sourceWord(a: Allocation) {
-  const s = a.sourceOfYield.toLowerCase();
-  return s.includes("lent") || s.includes("lending") || s.includes("interest")
-    ? "lending"
-    : "yield";
+function AllocationExplain({ a }: { a: Allocation }) {
+  return (
+    <div className="surface-card p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-hairline pb-3">
+        <div className="font-medium text-ink">
+          {a.label}
+          {a.apyMarket && <span className="num ml-2 text-xs text-muted">{a.apyMarket}</span>}
+          <span className="ml-2 text-sm font-normal text-muted">· {a.chain}</span>
+        </div>
+        <div className="text-sm text-muted">
+          <span className="num text-ink">{a.weightPct}%</span> weight ·{" "}
+          <span className="num text-ink">{(a.apyBps / 100).toFixed(2)}%</span> APY ·{" "}
+          <span className="uppercase">{a.exposure}</span> · risk{" "}
+          <span className="num text-ink">{a.riskScore}</span>/100
+        </div>
+      </div>
+      <div className="mt-3 grid gap-4 sm:grid-cols-2">
+        <div>
+          <div className="label mb-1">Where the yield comes from</div>
+          <p className="text-sm leading-relaxed text-ink">{a.sourceOfYield}</p>
+        </div>
+        <div>
+          <div className="label mb-1">Key risk to watch</div>
+          <p className="text-sm leading-relaxed text-ink">{a.keyRisk}</p>
+        </div>
+      </div>
+      {a.explanation && (
+        <p className="mt-3 text-sm leading-relaxed text-muted">{a.explanation}</p>
+      )}
+    </div>
+  );
 }
 
 function DetailPanel({ strategy }: { strategy: ProposedStrategy }) {
