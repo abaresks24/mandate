@@ -62,6 +62,7 @@ export type ProposeResult =
       status: "refused";
       reason_code:
         | "UNREALISTIC_APY"
+        | "UNACHIEVABLE_GOAL"
         | "RISK_MANDATE_CONTRADICTION"
         | "UNSUPPORTED_PROTOCOL"
         | "MALFORMED_BRIEF"
@@ -82,9 +83,56 @@ interface LlmProposal {
   caveat?: string;
 }
 
-// Hard, non-LLM guardrails.
-const MAX_REALISTIC_APY_BPS = 2500; // 25%
+// Hard, non-LLM guardrails. These run REGARDLESS of what the LLM returns, so a
+// jailbroken or over-eager model cannot talk the product into an impossible promise.
+const MAX_REALISTIC_APY_BPS = 2500; // 25% — above this at LOW risk is a scam signal
+const ABSOLUTE_MAX_APY_BPS = 8000; // 80% — above this at ANY risk is simply not achievable
 const LOW_RISK_CAP = 25;
+
+// What YieldAI actually does — reused in every "that's not possible" message so the
+// refusal teaches instead of just saying no.
+const WHAT_IT_DOES =
+  "YieldAI puts the capital you deposit to work in real on-chain yield markets. It " +
+  "grows a deposit at prevailing market rates — it does not create principal, multiply " +
+  "your money on demand, or guarantee a fixed future amount.";
+
+/**
+ * Catch "goal" briefs that no yield strategy can satisfy: get-rich-quick multipliers
+ * ("double my money", "10x", "100x", "moon"), explicit get-rich language, and asking
+ * to HOLD millions of units of a crypto asset ("2M BTC", "2 million bitcoin"). This is
+ * a deterministic backstop; the LLM is instructed to refuse these too, but this layer
+ * cannot be argued with. Kept conservative so a legitimate deposit ("invest 2M in
+ * stablecoins") is NOT refused — amount alone is never the trigger.
+ */
+export function detectUnachievableGoal(brief: string): { reason: string } | null {
+  const t = ` ${brief.toLowerCase()} `;
+
+  // Multipliers & get-rich-quick phrasing.
+  const multiplier =
+    /\b\d{1,4}\s?x\b/.test(t) || // 10x, 100x
+    /\bx\s?\d{2,}\b/.test(t) || // x100
+    /\b(double|triple|quadruple|moon|to the moon|get rich|getting rich|become rich|millionaire|millionnaire|retire early)\b/.test(
+      t,
+    ) ||
+    /\b(multiply|multipli\w+)\b[\s\S]{0,20}\b(money|capital|funds?|deposit|invest\w*)\b/.test(t);
+
+  // Holding millions/billions of UNITS of a VOLATILE asset ("2M BTC", "2 million eth").
+  // Stablecoins are excluded — "2M USDC" is just a $2M deposit, a normal principal.
+  const assetUnitsInMillions =
+    /\b\d[\d.,]*\s?(m|mm|bn|b)\b[\s\S]{0,6}\b(btc|bitcoin|eth|ether|sol|near)\b/.test(t) ||
+    /\b(million|millions|billion|billions|milliard\w*)\b[\s\S]{0,6}\b(btc|bitcoin|eth|ether|sol|near)\b/.test(t);
+
+  if (multiplier || assetUnitsInMillions) {
+    return {
+      reason:
+        `${WHAT_IT_DOES} There is no strategy that turns a deposit into a target like ` +
+        `this, multiplies your capital on demand, or makes you rich quickly — anything ` +
+        `promising that is a scam. Tell me how much you want to deposit and your risk ` +
+        `appetite, and I'll show you the realistic yield on it.`,
+    };
+  }
+  return null;
+}
 
 function tvlShort(tvl: number): string {
   return tvl >= 1e9 ? `$${(tvl / 1e9).toFixed(1)}B` : `$${Math.max(1, Math.round(tvl / 1e6))}M`;
@@ -131,8 +179,19 @@ function systemPrompt(venues: Venues): string {
     "on Ethereum). You MAY include roadmap venues when they fit — if you do, say so",
     "plainly in `caveat`. Never claim a roadmap venue is already executing.",
     "",
-    "REFUSE (realistic=false, give refusal_reason) ONLY for the impossible: high APY",
-    "with zero/near-zero risk ('40% APY, no risk'), or an empty/nonsense brief.",
+    "REFUSE (set realistic=false and write refusal_reason) for briefs no yield strategy",
+    "can satisfy. Be honest and firm — do not flatter an impossible ask. Refuse when:",
+    "- the target return is unrealistic: anything above ~80% APY, or above ~25% APY while",
+    "  also demanding low/zero risk (e.g. '1000% a year', '40% APY with no risk').",
+    "- the brief is a get-rich-quick / multiplier goal: 'double my money', '10x', '100x',",
+    "  'make me a millionaire', 'moon'. Yield grows a deposit at market rates; it cannot",
+    "  multiply capital on demand.",
+    "- the brief asks to HOLD an absurd amount of an asset ('I want 2M BTC'). The agent",
+    "  only puts the capital the user deposits to work; it does not manufacture principal.",
+    "- the brief is empty or nonsense.",
+    "In refusal_reason, briefly explain WHAT the agent does (grows a deposit at realistic",
+    "market rates) and WHY the ask is impossible, then invite a realistic brief (deposit",
+    "size + risk appetite). Never promise a fixed future amount.",
     "",
     "Weights must sum to about 100.",
     "",
@@ -156,6 +215,18 @@ export function detectUnrealistic(
   targetApyBps: number,
   maxRiskScore: number,
 ): { reason: string } | null {
+  // Above the absolute ceiling, refuse at ANY risk level — no real on-chain market
+  // sustains this, so e.g. "1000% a year" is rejected even if risk tolerance is high.
+  if (targetApyBps > ABSOLUTE_MAX_APY_BPS) {
+    return {
+      reason:
+        `A target of ${(targetApyBps / 100).toFixed(0)}% APY is not achievable on-chain. ` +
+        `${WHAT_IT_DOES} The deepest real markets in its universe pay a small fraction of ` +
+        `this; realistic stablecoin yields are low single digits, and even aggressive ` +
+        `strategies rarely clear a few tens of percent — with real risk of loss. Anything ` +
+        `promising returns like this is a scam.`,
+    };
+  }
   if (targetApyBps > MAX_REALISTIC_APY_BPS && maxRiskScore <= LOW_RISK_CAP) {
     return {
       reason:
@@ -332,6 +403,11 @@ export async function proposeStrategy(brief: string, cfg?: LlmConfig): Promise<P
     return { status: "refused", reason_code: "MALFORMED_BRIEF", reason: "The brief is empty or too short to interpret." };
   }
 
+  const goal = detectUnachievableGoal(brief);
+  if (goal) {
+    return { status: "refused", reason_code: "UNACHIEVABLE_GOAL", reason: goal.reason };
+  }
+
   const config = cfg ?? readLlmConfig();
   const venues = await buildShortlist();
   const messages: ChatMessage[] = [
@@ -364,6 +440,12 @@ export async function refineStrategy(
   if (!message || message.trim().length < 2) {
     return { status: "refused", reason_code: "MALFORMED_BRIEF", reason: "The refinement message is empty." };
   }
+
+  const goal = detectUnachievableGoal(message);
+  if (goal) {
+    return { status: "refused", reason_code: "UNACHIEVABLE_GOAL", reason: goal.reason };
+  }
+
   const config = cfg ?? readLlmConfig();
   const venues = await buildShortlist();
 
