@@ -63,6 +63,7 @@ export type ProposeResult =
       reason_code:
         | "UNREALISTIC_APY"
         | "UNACHIEVABLE_GOAL"
+        | "ASSET_UNAVAILABLE"
         | "RISK_MANDATE_CONTRADICTION"
         | "UNSUPPORTED_PROTOCOL"
         | "MALFORMED_BRIEF"
@@ -148,7 +149,25 @@ function venueBrief(venues: Venues): string {
     .join("\n");
 }
 
-function systemPrompt(venues: Venues): string {
+function systemPrompt(venues: Venues, assetLock: string | null): string {
+  // When exposure is pinned, only show venues of that asset so the model literally
+  // cannot pick something that would rotate the user out of their asset.
+  const shown: Venues = assetLock
+    ? Object.fromEntries(Object.entries(venues).filter(([, v]) => v.asset === assetLock))
+    : venues;
+
+  const lockLine = assetLock
+    ? [
+        "",
+        `HARD CONSTRAINT — EXPOSURE LOCK: the user holds ${ASSET_LABEL[assetLock] ?? assetLock} and`,
+        `wants yield ON ${ASSET_LABEL[assetLock] ?? assetLock}. EVERY allocation MUST keep`,
+        `${ASSET_LABEL[assetLock] ?? assetLock} exposure. Pick ONLY from the venues below (they are`,
+        `already filtered to ${ASSET_LABEL[assetLock] ?? assetLock}). NEVER swap into ETH, stablecoins,`,
+        `or any other asset to chase yield — staying exposed to the user's asset is the whole point.`,
+        "",
+      ]
+    : [];
+
   return [
     "You are YieldAI's strategy drafter. You convert a user's investment brief",
     "into a PROPOSED on-chain yield strategy. Respond ONLY with a JSON object.",
@@ -156,6 +175,7 @@ function systemPrompt(venues: Venues): string {
     "ALWAYS respond in ENGLISH. Every text field (summary, each allocation",
     "explanation, caveat, refusal_reason) MUST be in English, even if the brief is",
     "in another language.",
+    ...lockLine,
     "",
     "You do NOT compute risk scores — a separate deterministic module does that.",
     "Your job: read the brief, then DESIGN A STRATEGY by picking a handful of",
@@ -163,7 +183,7 @@ function systemPrompt(venues: Venues): string {
     "honest explanation. Use the EXACT slug key (the quoted string) for each pick.",
     "",
     "THE LIVE MARKET UNIVERSE (slug · protocol · market · chain · category · exposure · APY · TVL · LIVE/roadmap):",
-    venueBrief(venues),
+    venueBrief(shown),
     "",
     "DESIGN DIFFERENT STRATEGIES FOR DIFFERENT BRIEFS:",
     "- Match RISK APPETITE: conservative → deep blue-chip lending (Aave, Morpho,",
@@ -172,6 +192,10 @@ function systemPrompt(venues: Venues): string {
     "  high-APY markets. Deeper TVL = safer, all else equal.",
     "- HONOR asset-exposure wishes via the `exposure` tag: BTC → BTC venues; ETH →",
     "  ETH staking/restaking; NEAR → NEAR venues; 'no volatility' → stablecoin only.",
+    "  CRITICAL: if the user already holds an asset and wants yield ON it, EVERY",
+    "  allocation must KEEP that exposure (exposure tag == their asset). Earning yield",
+    "  on BTC means staying in BTC-denominated venues — never swap BTC into ETH or",
+    "  stablecoins to chase a rate; that would drop the exposure they asked to keep.",
     "- You may pick SEVERAL markets from the same protocol (e.g. two Morpho markets)",
     "  when it fits. Typically 2-5 markets across categories. Vary the mix per brief.",
     "",
@@ -238,6 +262,59 @@ export function detectUnrealistic(
   return null;
 }
 
+// Human labels for the asset tags carried by every venue.
+const ASSET_LABEL: Record<string, string> = {
+  btc: "BTC",
+  eth: "ETH",
+  sol: "SOL",
+  near: "NEAR",
+  stablecoin: "stablecoins",
+};
+
+/**
+ * Detect the asset the user already HOLDS / wants yield ON, so the strategy keeps
+ * that exposure instead of silently swapping it away. "I have a BTC and want yield
+ * on it" must stay BTC-denominated — never rotate into ETH or stables.
+ *
+ * Returns an asset tag (matching Venue.asset) or null when the brief doesn't pin one.
+ * Conservative: requires BOTH the asset name AND a holding/yield cue, so an incidental
+ * mention ("near zero risk") never locks exposure. If the user names two volatile
+ * assets ("BTC and ETH"), we don't force a single lock — they opted into a basket.
+ */
+export function detectAssetLock(brief: string): string | null {
+  const t = ` ${brief.toLowerCase()} `;
+
+  const groups: { tag: string; re: RegExp }[] = [
+    { tag: "btc", re: /\b(btc|bitcoin|wbtc|lbtc|cbbtc|tbtc|sbtc)\b/ },
+    { tag: "eth", re: /\b(eth|ether|ethereum|weth|steth|wsteth|reth|weeth|eeth)\b/ },
+    { tag: "sol", re: /\b(sol|solana|msol|jitosol)\b/ },
+    // Bare "near" is a common English word — only lock on unambiguous forms.
+    {
+      tag: "near",
+      re: /\b(stnear|linear)\b|\b(my|mon|ma|mes|des|du|stake|staking|hold|holding)\s+near\b|\bnear\s+(token|staking|exposure|position|holdings?)\b/,
+    },
+    { tag: "stablecoin", re: /\b(usdc|usdt|dai|usds|stablecoins?|stable|dollars?)\b/ },
+  ];
+
+  const found = groups.filter((g) => g.re.test(t)).map((g) => g.tag);
+  if (found.length === 0) return null;
+
+  // A holding / "yield on" cue — otherwise a passing mention shouldn't pin exposure.
+  const hasCue =
+    /\b(i\s*(have|hold|own|'?ve|got)|i've|my|our|mon|ma|mes|j'?ai|j\s+ai|on\s+(my|some|the|this|it)|sur\s+(du|le|la|des|mon|ma|ce|mes)|rendement\s+sur|yield\s+on|earn\s+on|return\s+on|keep|stay|rester|garder|conserver|expos\w+|holding|stack|bag|denominated)\b/.test(
+      t,
+    );
+  if (!hasCue) return null;
+
+  const uniqVolatile = Array.from(new Set(found.filter((f) => f !== "stablecoin")));
+  // One volatile asset named with a cue → lock it (the important case: BTC/ETH/…).
+  if (uniqVolatile.length === 1) return uniqVolatile[0]!;
+  // No volatile asset, only stablecoins → lock stablecoins (no price exposure wanted).
+  if (uniqVolatile.length === 0 && found.includes("stablecoin")) return "stablecoin";
+  // Several volatile assets named → the user opted into a basket; don't force one.
+  return null;
+}
+
 function clampInt(v: number | undefined, lo: number, hi: number, fallback: number): number {
   if (typeof v !== "number" || !Number.isFinite(v)) return fallback;
   return Math.max(lo, Math.min(hi, Math.round(v)));
@@ -256,7 +333,33 @@ function sanitizeExplanation(llmText: string | undefined, displayName: string, r
 }
 
 /** Build the structured proposal from a parsed LLM proposal + the live universe. */
-export function assembleStrategy(parsed: LlmProposal, venues: Venues): ProposeResult {
+export function assembleStrategy(
+  parsed: LlmProposal,
+  venues: Venues,
+  assetLock: string | null = null,
+): ProposeResult {
+  // Exposure lock: if the user wants yield on a specific asset, every venue the
+  // strategy may touch must be denominated in that asset — no silent rotation.
+  if (assetLock) {
+    const assetVenues = Object.fromEntries(
+      Object.entries(venues).filter(([, v]) => v.asset === assetLock),
+    );
+    if (Object.keys(assetVenues).length === 0) {
+      return {
+        status: "refused",
+        reason_code: "ASSET_UNAVAILABLE",
+        reason:
+          `To earn yield on ${ASSET_LABEL[assetLock] ?? assetLock} you must stay exposed to ` +
+          `${ASSET_LABEL[assetLock] ?? assetLock} the whole time — rotating into another asset ` +
+          `would drop that exposure. Right now the live universe has no ` +
+          `${ASSET_LABEL[assetLock] ?? assetLock}-denominated yield market that clears our TVL and ` +
+          `rate floors, so there is no honest strategy to propose. Try a different asset, or check ` +
+          `back as markets refresh.`,
+      };
+    }
+    venues = assetVenues; // everything below now operates on the locked asset only.
+  }
+
   if (parsed.realistic === false) {
     return {
       status: "refused",
@@ -275,14 +378,22 @@ export function assembleStrategy(parsed: LlmProposal, venues: Venues): ProposeRe
     return { status: "refused", reason_code: "UNREALISTIC_APY", reason: unrealistic.reason };
   }
 
-  const requested = (parsed.allocations ?? []).filter((a) => a.protocol);
-  const unknown = requested.map((a) => a.protocol!).filter((p) => !(p in venues));
-  if (unknown.length > 0) {
-    return {
-      status: "refused",
-      reason_code: "UNSUPPORTED_PROTOCOL",
-      reason: `Requested market(s) not in the live universe: ${unknown.slice(0, 3).join(", ")}.`,
-    };
+  const allRequested = (parsed.allocations ?? []).filter((a) => a.protocol);
+  // Under an exposure lock, `venues` is already restricted to the locked asset, so any
+  // off-asset pick simply isn't present. Drop those silently and let the fallback fill
+  // in from the locked asset's venues — never rotate the user out of their exposure.
+  const requested = assetLock
+    ? allRequested.filter((a) => a.protocol! in venues)
+    : allRequested;
+  if (!assetLock) {
+    const unknown = requested.map((a) => a.protocol!).filter((p) => !(p in venues));
+    if (unknown.length > 0) {
+      return {
+        status: "refused",
+        reason_code: "UNSUPPORTED_PROTOCOL",
+        reason: `Requested market(s) not in the live universe: ${unknown.slice(0, 3).join(", ")}.`,
+      };
+    }
   }
 
   const effective =
@@ -379,8 +490,13 @@ export function assembleStrategy(parsed: LlmProposal, venues: Venues): ProposeRe
         `${roadmap.join(", ")} ${roadmap.length === 1 ? "is" : "are"} real markets in the ` +
         `YieldAI universe (execution on the roadmap).`
       : "";
+  const lockNote = assetLock
+    ? `Exposure stays in ${ASSET_LABEL[assetLock] ?? assetLock} throughout — every allocation is ` +
+      `${ASSET_LABEL[assetLock] ?? assetLock}-denominated, so you keep full ${ASSET_LABEL[assetLock] ?? assetLock} ` +
+      `price exposure while it earns.`
+    : "";
   const llmCaveat = parsed.caveat?.trim();
-  const caveat = [llmCaveat, liveNote].filter(Boolean).join(" ") || undefined;
+  const caveat = [lockNote, llmCaveat, liveNote].filter(Boolean).join(" ") || undefined;
 
   const strategy: ProposedStrategy = {
     summary:
@@ -410,8 +526,9 @@ export async function proposeStrategy(brief: string, cfg?: LlmConfig): Promise<P
 
   const config = cfg ?? readLlmConfig();
   const venues = await buildShortlist();
+  const assetLock = detectAssetLock(brief);
   const messages: ChatMessage[] = [
-    { role: "system", content: systemPrompt(venues) },
+    { role: "system", content: systemPrompt(venues, assetLock) },
     { role: "user", content: brief },
   ];
 
@@ -427,7 +544,7 @@ export async function proposeStrategy(brief: string, cfg?: LlmConfig): Promise<P
     };
   }
 
-  return assembleStrategy(parsed, venues);
+  return assembleStrategy(parsed, venues, assetLock);
 }
 
 /** Refine: feed the prior strategy + the user's message back through the LLM. */
@@ -448,6 +565,8 @@ export async function refineStrategy(
 
   const config = cfg ?? readLlmConfig();
   const venues = await buildShortlist();
+  // The refine message can introduce/override the exposure; otherwise keep the brief's.
+  const assetLock = detectAssetLock(message) ?? detectAssetLock(brief);
 
   const priorSummary = JSON.stringify({
     summary: priorStrategy.summary,
@@ -457,7 +576,7 @@ export async function refineStrategy(
   });
 
   const messages: ChatMessage[] = [
-    { role: "system", content: systemPrompt(venues) },
+    { role: "system", content: systemPrompt(venues, assetLock) },
     { role: "user", content: `Original brief: ${brief}` },
     { role: "assistant", content: `Here is the current proposal I drafted: ${priorSummary}` },
     { role: "user", content: `Update the proposal based on this feedback, returning the same JSON shape: ${message}` },
@@ -475,5 +594,5 @@ export async function refineStrategy(
     };
   }
 
-  return assembleStrategy(parsed, venues);
+  return assembleStrategy(parsed, venues, assetLock);
 }
