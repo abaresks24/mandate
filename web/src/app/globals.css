@@ -12,41 +12,40 @@
 :root {
   color-scheme: light;
 
-  /* Brand reds */
-  --red-brand: #c41c24;
-  --red-mid: #d6212a;
-  --red-hi: #e44e5a;
-  --red-edge: #b8171c;
+  /* Brand blues (interactive accent + field) */
+  --red-brand: #2e6fa8; /* mid blue — the interactive accent */
+  --red-mid: #0e2238; /* navy field */
+  --red-hi: #163a5c; /* lighter navy glow */
+  --red-edge: #0a1a2c; /* field edge */
 
-  /* Neutrals / surfaces */
-  --ink: #0e0605;
-  --parchment: #f3e9dd;
-  --parchment-2: #efe4d6;
-  --parchment-3: #e6d8c6;
-  --gold: #b08d57;
+  /* Neutrals / cool surfaces */
+  --ink: #0c1826;
+  --parchment: #f1f5f9;
+  --parchment-2: #e3eaf2;
+  --parchment-3: #d8e1eb;
+  --gold: #1e3a5f; /* deep blue — hero numbers */
 
-  --ink-2: #3a3036;
-  --ink-mut: #6b5f63;
+  --ink-2: #2a3b4d;
+  --ink-mut: #5a6b7d;
 
-  --line: #d9c9b6;
-  --line-strong: #c3ae97;
+  --line: #d5dee8;
+  --line-strong: #c2cedc;
 
-  --cream: #f3e9dd;
-  --cream-mut: #e4c9b9;
-  --cream-dim: rgba(243, 233, 221, 0.68);
+  --cream: #eaf1f8;
+  --cream-mut: #aec2d6;
+  --cream-dim: rgba(234, 241, 248, 0.68);
 
-  --good: #3e6b4f;
-  --good-weak: #e3eadf;
-  --bad: #c41c24;
-  --bad-weak: #f3ddd8;
-  --warn: #8a6a2f;
-  --warn-weak: #efe3cc;
-  --hidden: #5a3e57;
-  --hidden-weak: #ebdfe6;
+  --good: #2e7d6b;
+  --good-weak: #dff0eb;
+  --bad: #c0392b;
+  --bad-weak: #f6e1de;
+  --warn: #b7791f;
+  --warn-weak: #f3e8d2;
+  --hidden: #3e5c7e;
+  --hidden-weak: #e1e8f0;
 
-  --emboss: 0 1px 0 rgba(255, 255, 255, 0.55) inset,
-    0 -1px 0 rgba(184, 23, 28, 0.06) inset, 0 1px 2px rgba(13, 10, 13, 0.1),
-    0 10px 30px rgba(13, 10, 13, 0.22);
+  --emboss: 0 1px 0 rgba(255, 255, 255, 0.7) inset,
+    0 1px 2px rgba(10, 26, 44, 0.08), 0 10px 30px rgba(10, 26, 44, 0.14);
 
   --radius: 14px;
   --radius-sm: 10px;
@@ -77,17 +76,20 @@
     text-rendering: optimizeLegibility;
   }
 
-  /* SINGLE fixed global paper layer — identical at every scroll position, so the
-     red field is one seamless continuous texture across landing / app / docs. */
+  /* SINGLE fixed global navy field — a deep navy with a top-weighted steel glow,
+     plus a faint inline grain so the gradient never bands. Identical at every
+     scroll position, so the field is one seamless continuous surface. */
   body::before {
     content: "";
     position: fixed;
     inset: 0;
     z-index: -2;
     background-color: var(--red-mid);
-    background-image: url("/brand/paper-fine.jpg");
-    background-repeat: repeat;
-    background-size: 300px 300px;
+    background-image:
+      radial-gradient(120% 90% at 50% -5%, rgba(46, 111, 168, 0.3) 0%, rgba(14, 34, 56, 0) 55%),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+    background-repeat: no-repeat, repeat;
+    background-size: cover, 140px 140px;
     background-position: center center;
     pointer-events: none;
   }
@@ -100,13 +102,13 @@
     pointer-events: none;
     background: radial-gradient(
         130% 115% at 50% 42%,
-        rgba(14, 6, 5, 0) 55%,
-        rgba(14, 6, 5, 0.22) 100%
+        rgba(5, 12, 20, 0) 55%,
+        rgba(5, 12, 20, 0.3) 100%
       ),
       radial-gradient(
         120% 70% at 50% 0%,
-        rgba(228, 78, 90, 0.16) 0%,
-        rgba(228, 78, 90, 0) 60%
+        rgba(90, 140, 190, 0.14) 0%,
+        rgba(90, 140, 190, 0) 60%
       );
   }
 
@@ -289,11 +291,11 @@
   border-bottom: 1px solid transparent;
 }
 .sc__bar.is-scrolled {
-  background: rgba(150, 18, 24, 0.42);
+  background: rgba(14, 34, 56, 0.55);
   backdrop-filter: blur(10px) saturate(1.1);
   -webkit-backdrop-filter: blur(10px) saturate(1.1);
-  border-bottom-color: rgba(243, 233, 221, 0.14);
-  box-shadow: 0 8px 30px rgba(14, 6, 5, 0.22);
+  border-bottom-color: rgba(234, 241, 248, 0.14);
+  box-shadow: 0 8px 30px rgba(5, 12, 20, 0.28);
 }
 .sc__home {
   display: inline-flex;
@@ -349,7 +351,7 @@
   text-decoration: none;
 }
 
-/* Launch pill — cream on the red field so it pops (crimson-on-red would vanish). */
+/* Launch pill — light surface on the navy field so it pops. */
 .sg-launch {
   font-family: var(--font-ui);
   font-weight: 600;
@@ -359,12 +361,12 @@
   border: 1px solid var(--line-strong);
   padding: 9px 17px;
   border-radius: var(--radius-sm);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset, 0 6px 18px rgba(14, 6, 5, 0.3);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 6px 18px rgba(5, 12, 20, 0.34);
   transition: 140ms ease;
   white-space: nowrap;
 }
 .sg-launch:hover {
-  background: #fff6ec;
+  background: #ffffff;
   text-decoration: none;
   transform: translateY(-1px);
 }

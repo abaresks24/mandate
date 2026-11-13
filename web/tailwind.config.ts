@@ -8,43 +8,44 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // --- SURFACES (parchment, sampled from the Sagittaire system) ---
-        paper: "#F3E9DD", // primary parchment surface (cards, sheets, bars)
-        mist: "#EFE4D6", // secondary / hover parchment
-        ink: "#0E0605", // near-black text on parchment
-        muted: "#6B5F63", // muted / captions on parchment
-        hairline: "#D9C9B6", // hairline on parchment
-        edge: "#C3AE97", // stronger parchment line
-        surface: "#F3E9DD", // legacy alias
+        // --- SURFACES (cool off-white — three sober blues palette) ---
+        paper: "#F1F5F9", // primary cool surface (cards, sheets, bars)
+        mist: "#E3EAF2", // secondary / hover
+        ink: "#0C1826", // deep-navy text
+        muted: "#5A6B7D", // cool gray-blue captions
+        hairline: "#D5DEE8", // cool hairline
+        edge: "#C2CEDC", // stronger cool line
+        surface: "#F1F5F9", // legacy alias
 
-        // --- THE RED PAPER FIELD (body background) ---
-        red: "#D6212A", // field mid (center of the glow)
-        "red-edge": "#B8171C", // vignette / edges
+        // --- THE NAVY FIELD (body background) — token name kept as `red` ---
+        red: "#0E2238", // field mid (deep navy)
+        "red-edge": "#0A1A2C", // field edge
 
-        // --- ACCENTS ---
-        // Crimson = the interactive accent (active states, links, primary btn).
-        near: "#C41C24",
-        "near-dim": "#B8171C",
-        // Antique gold = the RARE accent, hero numbers only.
-        gold: "#B08D57",
-        // Muted plum = "confidential / special" state (ex-evm).
-        evm: "#5A3E57",
-        plum: "#5A3E57",
-        "plum-weak": "#EBDFE6",
+        // --- THE THREE BLUES ---
+        // Mid blue = interactive accent (active states, links, primary btn).
+        near: "#2E6FA8",
+        "near-dim": "#245A89",
+        // Deep blue = the headline / hero-number accent.
+        gold: "#1E3A5F",
+        // Light steel = third blue (secondary / special state).
+        evm: "#3E5C7E",
+        plum: "#3E5C7E",
+        "plum-weak": "#E1E8F0",
+        steel: "#7FA6CC", // light blue for charts / soft accents
 
-        // --- TEXT ON RED (cream tints) ---
-        cream: "#F3E9DD",
-        "cream-mut": "#E4C9B9",
+        // --- TEXT ON THE NAVY FIELD (cool near-white) ---
+        cream: "#EAF1F8",
+        "cream-mut": "#AEC2D6",
 
-        // --- SEMANTIC STATES (brand-tuned, legible on parchment) ---
-        danger: "#C41C24",
-        warn: "#8A6A2F",
-        ok: "#3E6B4F",
-        good: "#3E6B4F",
+        // --- SEMANTIC STATES (non-blue so they stay legible) ---
+        danger: "#C0392B",
+        warn: "#B7791F",
+        ok: "#2E7D6B",
+        good: "#2E7D6B",
 
         // Legacy tokens kept so preserved components still compile.
-        panel: "#EFE4D6",
-        elevated: "#E6D8C6",
+        panel: "#E3EAF2",
+        elevated: "#D8E1EB",
       },
       fontFamily: {
         // Inter for UI/body, classical serif for display, mono for data.
@@ -63,11 +64,11 @@ const config: Config = {
         "3xl": "1.5rem",
       },
       boxShadow: {
-        // Letterpress / emboss for parchment surfaces.
+        // Soft lift for the cool surfaces.
         emboss:
-          "0 1px 0 rgba(255,255,255,0.55) inset, 0 -1px 0 rgba(184,23,28,0.06) inset, 0 1px 2px rgba(13,10,13,0.10), 0 10px 30px rgba(13,10,13,0.22)",
+          "0 1px 0 rgba(255,255,255,0.7) inset, 0 1px 2px rgba(10,26,44,0.08), 0 10px 30px rgba(10,26,44,0.14)",
         "emboss-inset":
-          "0 1px 2px rgba(13,10,13,0.18) inset, 0 1px 0 rgba(255,255,255,0.4)",
+          "0 1px 2px rgba(10,26,44,0.12) inset, 0 1px 0 rgba(255,255,255,0.6)",
       },
       keyframes: {
         shimmer: {

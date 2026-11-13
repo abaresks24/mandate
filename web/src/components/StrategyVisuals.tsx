@@ -3,16 +3,16 @@
 
 // A restrained, cohesive palette: the accent green for the largest slice, then a
 // neutral ramp. Distinct enough to read, calm enough to stay editorial.
-// Parchment-ready palette: antique gold, crimson, plum, ink + warm neutrals.
+// Cool palette — three sober blues + supporting steels, reads on cool surfaces.
 export const SERIES = [
-  "#B08D57", // antique gold
-  "#C41C24", // crimson
-  "#5A3E57", // plum
-  "#0E0605", // ink
-  "#3E6B4F", // forest
-  "#C3AE97", // line-strong (warm tan)
-  "#8A6A2F", // dark gold
-  "#9C8468", // muted tan
+  "#2E6FA8", // mid blue (accent)
+  "#1E3A5F", // deep navy
+  "#7FA6CC", // light steel
+  "#3E5C7E", // steel
+  "#5B8DB8", // sky steel
+  "#0C1826", // ink
+  "#A9C2DC", // pale blue
+  "#24506E", // teal-navy
 ];
 
 export interface Slice {
@@ -49,7 +49,7 @@ export function Donut({
       <div className="flex items-center gap-5">
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} className="shrink-0">
           <g transform={`rotate(-90 ${size / 2} ${size / 2})`}>
-            <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#D9C9B6" strokeWidth={stroke} />
+            <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke="#D5DEE8" strokeWidth={stroke} />
             {data.map((d, i) => {
               const len = (d.pct / 100) * c;
               const el = (
@@ -147,14 +147,14 @@ export function GrowthCurve({
         <div className="label">Projected value · {fmt(principal)} over 12 months</div>
         <div className="text-sm text-muted">
           <span className="num text-ink">{fmt(end)}</span>{" "}
-          <span className="num text-[color:#3E6B4F]">+{fmt(gain)}</span>
+          <span className="num text-[color:#2E7D6B]">+{fmt(gain)}</span>
         </div>
       </div>
       <svg width="100%" viewBox={`0 0 ${w} ${h}`} preserveAspectRatio="none" className="w-full">
-        <line x1={padL} y1={h - padB} x2={w - padR} y2={h - padB} stroke="#D9C9B6" strokeWidth="1" />
-        <path d={area} fill="#B08D57" opacity="0.08" />
-        <path d={line} fill="none" stroke="#B08D57" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-        <circle cx={x(months)} cy={y(end)} r="3" fill="#B08D57" />
+        <line x1={padL} y1={h - padB} x2={w - padR} y2={h - padB} stroke="#D5DEE8" strokeWidth="1" />
+        <path d={area} fill="#2E6FA8" opacity="0.08" />
+        <path d={line} fill="none" stroke="#2E6FA8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx={x(months)} cy={y(end)} r="3" fill="#2E6FA8" />
       </svg>
       <div className="mt-1 flex justify-between text-xs text-muted">
         <span>now</span>

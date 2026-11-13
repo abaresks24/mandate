@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { cn } from "@/lib/cn";
 import { live } from "@/lib/near";
@@ -91,8 +91,10 @@ export default function Overview() {
           <h2 className="section-h2">Strategy universe</h2>
           <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">
             The agent composes across real markets pulled live from DefiLlama —
-            lending, RWA, staking, BTC, LP and more. Rates and TVL are current;
-            risk is scored deterministically.
+            lending, RWA, staking, BTC, LP and more. Rates and TVL are current and
+            risk is scored deterministically. Two venues are executable on testnet
+            today (Rhea, Morpho); the rest are real markets with execution on the
+            roadmap — tagged below, nothing invented.
           </p>
         </div>
 
@@ -139,44 +141,113 @@ function tvlShort(n: number): string {
   return n >= 1e9 ? `$${(n / 1e9).toFixed(1)}B` : `$${Math.max(1, Math.round(n / 1e6))}M`;
 }
 
-function FilterRow({
+// A Morpho-style multi-select dropdown: pick the values you want to see. Empty
+// selection = no filter (everything shown). Closes on outside-click / Escape.
+function MultiSelect({
   label,
   options,
-  value,
+  selected,
   onChange,
 }: {
   label: string;
   options: string[];
-  value: string;
-  onChange: (v: string) => void;
+  selected: Set<string>;
+  onChange: (next: Set<string>) => void;
 }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  const toggle = (o: string) => {
+    const next = new Set(selected);
+    if (next.has(o)) next.delete(o);
+    else next.add(o);
+    onChange(next);
+  };
+  const count = selected.size;
+
   return (
-    <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 text-sm">
-      <span className="label">{label}</span>
-      {options.map((o) => (
-        <button
-          key={o}
-          type="button"
-          onClick={() => onChange(o)}
-          className={cn(
-            "focusable transition-colors",
-            value === o
-              ? "font-medium text-ink underline underline-offset-4 decoration-near"
-              : "text-muted hover:text-ink"
-          )}
-        >
-          {o}
-        </button>
-      ))}
+    <div className="relative" ref={ref}>
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={cn(
+          "focusable inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors",
+          count > 0
+            ? "border-near/50 bg-near/5 text-ink"
+            : "border-edge bg-paper text-muted hover:border-muted/50 hover:text-ink",
+        )}
+      >
+        <span>{label}</span>
+        {count > 0 && (
+          <span className="num rounded-full bg-near px-1.5 text-[11px] font-semibold text-cream">
+            {count}
+          </span>
+        )}
+        <span className="text-muted">{open ? "▴" : "▾"}</span>
+      </button>
+
+      {open && (
+        <div className="absolute left-0 top-full z-20 mt-1.5 max-h-72 w-60 overflow-auto rounded-lg border border-hairline bg-paper p-1.5 shadow-emboss">
+          <div className="flex items-center justify-between px-2 py-1">
+            <span className="label">{label}</span>
+            {count > 0 && (
+              <button
+                type="button"
+                onClick={() => onChange(new Set())}
+                className="focusable text-xs text-near hover:underline"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+          {options.map((o) => {
+            const on = selected.has(o);
+            return (
+              <button
+                key={o}
+                type="button"
+                onClick={() => toggle(o)}
+                className="focusable flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left text-sm text-ink transition-colors hover:bg-mist"
+              >
+                <span
+                  className={cn(
+                    "flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] leading-none text-cream",
+                    on ? "border-near bg-near" : "border-edge bg-paper",
+                  )}
+                  aria-hidden
+                >
+                  {on ? "✓" : ""}
+                </span>
+                <span className="capitalize">{o}</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }
 
 function StrategyTable() {
   const [rows, setRows] = useState<UniverseRow[] | null>(null);
-  const [chain, setChain] = useState("All");
-  const [category, setCategory] = useState("All");
-  const [exposure, setExposure] = useState("All");
+  const [chain, setChain] = useState<Set<string>>(new Set());
+  const [category, setCategory] = useState<Set<string>>(new Set());
+  const [exposure, setExposure] = useState<Set<string>>(new Set());
+  const [testnetOnly, setTestnetOnly] = useState(false);
   const [q, setQ] = useState("");
   const [sortKey, setSortKey] = useState<SortKey>("tvlUsd");
   const [desc, setDesc] = useState(true);
@@ -210,16 +281,17 @@ function StrategyTable() {
     );
   }
 
-  const chains = ["All", ...Array.from(new Set(rows.map((r) => r.chain)))];
-  const categories = ["All", ...Array.from(new Set(rows.map((r) => r.category)))];
-  const exposures = ["All", ...Array.from(new Set(rows.map((r) => r.exposure)))];
+  const chains = Array.from(new Set(rows.map((r) => r.chain))).sort();
+  const categories = Array.from(new Set(rows.map((r) => r.category))).sort();
+  const exposures = Array.from(new Set(rows.map((r) => r.exposure))).sort();
 
   const query = q.trim().toLowerCase();
   const filtered = rows.filter(
     (r) =>
-      (chain === "All" || r.chain === chain) &&
-      (category === "All" || r.category === category) &&
-      (exposure === "All" || r.exposure === exposure) &&
+      (chain.size === 0 || chain.has(r.chain)) &&
+      (category.size === 0 || category.has(r.category)) &&
+      (exposure.size === 0 || exposure.has(r.exposure)) &&
+      (!testnetOnly || r.live) &&
       (query === "" ||
         r.name.toLowerCase().includes(query) ||
         r.market.toLowerCase().includes(query)),
@@ -237,20 +309,47 @@ function StrategyTable() {
     }
   };
   const caret = (k: SortKey) => (sortKey === k ? (desc ? " ↓" : " ↑") : "");
+  const activeCount = chain.size + category.size + exposure.size + (testnetOnly ? 1 : 0);
 
   return (
     <div>
-      <div className="mb-5 flex flex-col gap-3">
+      <div className="mb-5 flex flex-wrap items-center gap-2.5">
         <input
           type="text"
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="Search protocol or market…"
-          className="input max-w-xs"
+          className="input max-w-[14rem]"
         />
-        <FilterRow label="Chain" options={chains} value={chain} onChange={setChain} />
-        <FilterRow label="Category" options={categories} value={category} onChange={setCategory} />
-        <FilterRow label="Exposure" options={exposures} value={exposure} onChange={setExposure} />
+        <MultiSelect label="Chain" options={chains} selected={chain} onChange={setChain} />
+        <MultiSelect label="Category" options={categories} selected={category} onChange={setCategory} />
+        <MultiSelect label="Exposure" options={exposures} selected={exposure} onChange={setExposure} />
+        <button
+          type="button"
+          onClick={() => setTestnetOnly((v) => !v)}
+          className={cn(
+            "focusable inline-flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm transition-colors",
+            testnetOnly
+              ? "border-ok/50 bg-ok/10 text-ok"
+              : "border-edge bg-paper text-muted hover:border-muted/50 hover:text-ink",
+          )}
+        >
+          Testnet-executable only
+        </button>
+        {activeCount > 0 && (
+          <button
+            type="button"
+            onClick={() => {
+              setChain(new Set());
+              setCategory(new Set());
+              setExposure(new Set());
+              setTestnetOnly(false);
+            }}
+            className="focusable text-sm text-near hover:underline"
+          >
+            Reset
+          </button>
+        )}
       </div>
 
       <div className="overflow-x-auto">
@@ -284,8 +383,14 @@ function StrategyTable() {
             {sorted.map((s, i) => (
               <tr key={s.name + s.market + s.chain + i}>
                 <td className="font-medium text-ink">
-                  {s.name}
-                  {s.live && <span className="ml-2 text-xs font-normal text-muted">live</span>}
+                  <span className="inline-flex items-center gap-2">
+                    {s.name}
+                    {s.live && (
+                      <span className="rounded-full border border-ok/40 bg-ok/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ok">
+                        testnet
+                      </span>
+                    )}
+                  </span>
                 </td>
                 <td className="num text-xs text-muted">{s.market}</td>
                 <td className="text-sm text-muted">{s.chain}</td>
@@ -314,10 +419,24 @@ function StrategyTable() {
         </table>
       </div>
 
-      <p className="mt-3 text-xs leading-relaxed text-muted">
-        {sorted.length} of {rows.length} live markets from DefiLlama, refreshed every
-        minute. A protocol like Morpho runs many markets — each row is a specific named market.
-      </p>
+      {/* Honest legend: what "testnet" means vs the rest. */}
+      <div className="mt-4 flex flex-col gap-1.5 text-xs leading-relaxed text-muted">
+        <p>
+          <span className="mr-1 rounded-full border border-ok/40 bg-ok/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-ok">
+            testnet
+          </span>
+          = executable on testnet today (Rhea on NEAR, Morpho on Ethereum via Chain
+          Signatures). Every other row is a{" "}
+          <strong className="font-medium text-ink">real market</strong> with live
+          APY/TVL pulled from DefiLlama that the agent composes into strategies —
+          on-chain execution for those is on the roadmap. Nothing here is invented.
+        </p>
+        <p>
+          Showing {sorted.length} of {rows.length} markets · APY/TVL refresh every
+          minute · a protocol like Morpho runs many markets, so each row is a specific
+          named market.
+        </p>
+      </div>
     </div>
   );
 }
