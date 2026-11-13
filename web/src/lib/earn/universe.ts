@@ -97,7 +97,10 @@ const CANON_CHAIN: Record<string, string> = {
 const MIN_TVL = 5_000_000; // ignore dust / near-dead markets
 const MIN_APY = 0.3; // drop ~0% collateral-only markets (not a yield strategy)
 const MAX_APY = 150; // clamp transient LP spikes
-const PER_PROTOCOL = 4; // top-N markets per PROTOCOL (guarantees coverage)
+// Top-N markets per (PROTOCOL × ASSET). Grouping by asset too — not just protocol —
+// guarantees each asset (BTC, ETH, stablecoin, …) gets real coverage, instead of a
+// multi-asset protocol's deepest (usually stablecoin) markets crowding out its BTC ones.
+const PER_PROTOCOL_ASSET = 3;
 
 function inferAsset(symbol: string): string {
   const s = symbol.toUpperCase();
@@ -204,16 +207,17 @@ export async function buildShortlist(): Promise<Record<string, Venue>> {
   const venues = pools.map(venueFromPool).filter((v): v is Venue => v !== null);
   if (venues.length < 6) return fallbackFromCatalogue();
 
-  // Top-N markets PER PROTOCOL, so every allowlisted protocol (Aave, Morpho,
-  // Euler, Compound, Spark, …) is represented — not just the deepest overall.
-  const byProto = new Map<string, Venue[]>();
+  // Top-N markets PER (PROTOCOL × ASSET), so every allowlisted protocol is
+  // represented AND every asset it serves gets coverage — a BTC holder sees real
+  // BTC markets, not just a protocol's deepest (usually stablecoin) pools.
+  const byGroup = new Map<string, Venue[]>();
   for (const v of venues) {
-    const k = v.displayName;
-    (byProto.get(k) ?? byProto.set(k, []).get(k)!).push(v);
+    const k = `${v.displayName}|${v.asset}`;
+    (byGroup.get(k) ?? byGroup.set(k, []).get(k)!).push(v);
   }
 
   const out: Record<string, Venue> = {};
-  for (const arr of Array.from(byProto.values())) {
+  for (const arr of Array.from(byGroup.values())) {
     arr.sort((a, b) => b.tvlUsd - a.tvlUsd);
     const seen = new Set<string>();
     let n = 0;
@@ -222,7 +226,7 @@ export async function buildShortlist(): Promise<Record<string, Venue>> {
       if (seen.has(mk)) continue; // dedup identical market symbols
       seen.add(mk);
       out[v.slug] = v;
-      if (++n >= PER_PROTOCOL) break;
+      if (++n >= PER_PROTOCOL_ASSET) break;
     }
   }
   return out;
