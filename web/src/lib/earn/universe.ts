@@ -102,16 +102,27 @@ const MAX_APY = 150; // clamp transient LP spikes
 // multi-asset protocol's deepest (usually stablecoin) markets crowding out its BTC ones.
 const PER_PROTOCOL_ASSET = 3;
 
-function inferAsset(symbol: string): string {
-  const s = symbol.toUpperCase();
+// Classify a SINGLE token into its asset family (or null if unrecognized).
+function classifyLeg(token: string): string | null {
+  const s = token.toUpperCase();
   const stable = ["USDC", "USDT", "DAI", "USDS", "SUSDE", "USDE", "USDY", "USD0", "GHO", "FRAX", "PYUSD", "USDL", "SDAI", "USR", "USUAL", "USD"];
   if (stable.some((t) => s.includes(t))) return "stablecoin";
-  if (/\bW?BTC\b|LBTC|CBBTC|BTC/.test(s)) return "btc";
-  if (/WSTETH|STETH|WEETH|EETH|RETH|WETH|ETH/.test(s)) return "eth";
+  if (/BTC/.test(s)) return "btc"; // WBTC, LBTC, CBBTC, TBTC, SBTC, …
   if (/STNEAR|LINEAR|NEAR/.test(s)) return "near";
-  if (/\bSOL\b|MSOL|JITOSOL/.test(s)) return "sol";
-  if (s.includes("-")) return "basket";
-  return "basket";
+  if (/WSTETH|STETH|WEETH|EETH|RETH|WETH|ETH/.test(s)) return "eth";
+  if (/SOL|MSOL|JITOSOL/.test(s)) return "sol";
+  return null;
+}
+
+// An LP pair is only "pure" exposure to an asset when BOTH legs are that asset
+// (WBTC-TBTC = BTC). A mixed pair (WBTC-WETH) is a BASKET — holding it is NOT full
+// BTC exposure, so it must never satisfy a "stay in BTC" lock.
+function inferAsset(symbol: string): string {
+  const legs = symbol.split(/[-/_ ]+/).filter(Boolean);
+  if (legs.length <= 1) return classifyLeg(symbol) ?? "basket";
+  const classes = new Set(legs.map(classifyLeg));
+  if (classes.has(null)) return "basket"; // an unrecognized leg → treat as mixed
+  return classes.size === 1 ? (classes.values().next().value as string) : "basket";
 }
 
 function sourceOfYieldFor(cat: string, name: string): string {
