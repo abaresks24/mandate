@@ -4,14 +4,15 @@ import { cn } from "@/lib/cn";
 type Variant = "primary" | "secondary" | "ghost";
 type Size = "md" | "lg";
 
-// Refined button system shared across landing + app.
-// primary   = NEAR green bg, black text (legible on #00EC97), used sparingly.
-// secondary = black outline, subtle.
+// Button system shared across landing + app (Sagittaire reskin).
+// primary   = crimson bg, cream text, embossed — used sparingly.
+// secondary = parchment outline, crimson on hover.
 // ghost     = text only.
 const variants: Record<Variant, string> = {
-  primary: "bg-near text-ink hover:brightness-95 border border-transparent",
+  primary:
+    "bg-near text-cream border border-red-edge shadow-[0_1px_0_rgba(255,255,255,0.18)_inset,0_2px_10px_rgba(184,23,28,0.35)] hover:bg-red-edge",
   secondary:
-    "bg-paper text-ink border border-ink/80 hover:bg-ink hover:text-paper",
+    "bg-paper text-ink border border-edge hover:border-near hover:text-near",
   ghost: "bg-transparent text-ink/70 hover:text-ink border border-transparent",
 };
 

@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import { GeistSans } from "geist/font/sans";
-import { GeistMono } from "geist/font/mono";
 import "./globals.css";
 import "@near-wallet-selector/modal-ui/styles.css";
 import { Toaster } from "sonner";
@@ -32,8 +30,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className={`${GeistSans.variable} ${GeistMono.variable}`}>
-      <body className="min-h-screen bg-paper font-sans text-ink">
+    <html lang="en">
+      {/* No bg here — the red textured field is painted by globals body::before. */}
+      <body className="min-h-screen font-sans text-ink">
         <WalletProvider>{children}</WalletProvider>
         <Toaster position="bottom-right" />
       </body>

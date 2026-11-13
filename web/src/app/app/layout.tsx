@@ -8,8 +8,9 @@ export default function AppLayout({
   return (
     <div className="flex min-h-screen flex-col">
       <AppTopBar />
-      <main className="mx-auto w-full max-w-6xl flex-1 px-5 py-12 sm:px-8 sm:py-16">
-        {children}
+      {/* A parchment "sheet" laid on the red desk — keeps the data UI readable. */}
+      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-10 sm:px-6 sm:py-14">
+        <div className="surface-card px-5 py-8 sm:px-10 sm:py-12">{children}</div>
       </main>
     </div>
   );

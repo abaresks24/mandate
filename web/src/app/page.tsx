@@ -1,214 +1,268 @@
+"use client";
+
 import Link from "next/link";
-import { TopBar } from "@/components/TopBar";
-import { Button } from "@/components/button";
-import { Wordmark } from "@/components/brand";
+import { useEffect, useRef, useState } from "react";
+
+// =============================================================================
+// YieldAI — landing (scrollytelling, Sagittaire-reskin).
+// A tall intro stage (~220vh) with a sticky 100vh hero drives a scroll
+// choreography: as the user scrolls DOWN the hero rises UP and fades, revealing
+// the protocol story beneath it. Scroll is driven in JS via a rAF-throttled
+// handler writing CSS vars on .sc (--p hero progress, --hero late lift/fade).
+// prefers-reduced-motion skips the choreography and shows static content.
+// =============================================================================
 
 const REPO = "https://github.com/abaresks24/yieldai";
 
-export default function Landing() {
+export default function Home() {
+  const stageRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [scrolled, setScrolled] = useState(false);
+
+  useEffect(() => {
+    const reduce =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    const root = rootRef.current;
+    if (!root) return;
+
+    const sections = Array.from(root.querySelectorAll<HTMLElement>(".sc__sec"));
+
+    if (reduce) {
+      root.style.setProperty("--p", "0");
+      root.style.setProperty("--hero", "0");
+      sections.forEach((s) => s.classList.add("is-in"));
+      setScrolled(true);
+      return;
+    }
+
+    let raf = 0;
+    const update = () => {
+      raf = 0;
+      const stage = stageRef.current;
+      if (!stage) return;
+      const vh = window.innerHeight;
+      const start = stage.offsetTop;
+      const span = stage.offsetHeight - vh;
+      const raw = span > 0 ? (window.scrollY - start) / span : 0;
+      const p = Math.min(1, Math.max(0, raw));
+      root.style.setProperty("--p", p.toFixed(4));
+      const hero = Math.min(1, Math.max(0, (p - 0.6) / 0.4));
+      root.style.setProperty("--hero", hero.toFixed(4));
+      setScrolled(p > 0.55);
+    };
+
+    const onScroll = () => {
+      if (!raf) raf = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", onScroll);
+
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          if (e.isIntersecting) {
+            e.target.classList.add("is-in");
+            io.unobserve(e.target);
+          }
+        }
+      },
+      { threshold: 0.18, rootMargin: "0px 0px -8% 0px" },
+    );
+    sections.forEach((s) => io.observe(s));
+
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", onScroll);
+      if (raf) cancelAnimationFrame(raf);
+      io.disconnect();
+    };
+  }, []);
+
   return (
-    <div className="flex min-h-screen flex-col">
-      <TopBar />
-
-      {/* HERO — explicitly fills the viewport so nothing below peeks on arrival */}
-      <section className="flex min-h-[calc(100svh-4rem)] items-center">
-        <div className="mx-auto w-full max-w-6xl px-5 py-20 sm:px-8">
-          <h1 className="display max-w-4xl text-5xl font-semibold leading-[1.03] text-ink sm:text-6xl lg:text-7xl">
-            Earn yield you can
-            <br />
-            actually trust.
-          </h1>
-
-          <p className="mt-8 max-w-xl text-lg leading-relaxed text-muted sm:text-xl">
-            An AI agent manages it — and you never have to trust the agent.
-            Its power is bounded on-chain, and every risky move is checked by
-            bonded guardians.
-          </p>
-
-          <div className="mt-12 flex flex-wrap items-center gap-4">
-            <Link href="/app">
-              <Button variant="primary" size="lg">
-                Launch app →
-              </Button>
-            </Link>
-            <Link href="/docs">
-              <Button variant="secondary" size="lg">
-                Read the docs
-              </Button>
-            </Link>
-          </div>
+    <div className="sc" ref={rootRef}>
+      {/* --- Persistent top bar --- */}
+      <div className={`sc__bar${scrolled ? " is-scrolled" : ""}`}>
+        <Link href="/" className="sc__home" aria-label="YieldAI home">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/yield-logo.png" alt="" className="sc__bar-mark" draggable={false} />
+          <span className="sc__bar-word">YieldAI</span>
+        </Link>
+        <div className="sc__bar-actions">
+          <Link href="/docs" className="sc__docs">
+            Docs
+          </Link>
+          <Link href="/app" className="sg-launch">
+            Launch app →
+          </Link>
         </div>
-      </section>
+      </div>
 
-      {/* (a) WHAT IT IS */}
-      <section className="border-t border-hairline bg-mist">
-        <div className="mx-auto max-w-6xl px-5 py-24 sm:px-8 sm:py-32">
-          <p className="mb-6 text-sm font-medium uppercase tracking-wider text-muted">
-            What it is
-          </p>
-          <h2 className="display max-w-3xl text-3xl font-semibold leading-tight text-ink sm:text-4xl">
-            An AI yield agent whose power is bounded on-chain.
-          </h2>
-          <div className="mt-14 grid gap-10 sm:grid-cols-3">
-            <Supporting
-              title="It can only act within your rules"
-              body="The mandate lives on-chain. Out-of-bounds actions are rejected by the contract — not by a promise."
-            />
-            <Supporting
-              title="Every risky move is checked"
-              body="A randomly-drawn committee of bonded guardians verifies the facts the contract can't see before capital moves."
-            />
-            <Supporting
-              title="Your funds stay yours"
-              body="The agent never holds custody. You keep a kill switch that unwinds everything on demand."
-            />
+      {/* --- INTRO STAGE: sticky hero --- */}
+      <div className="sc__stage" ref={stageRef}>
+        <div className="sc__sticky">
+          <div className="sc__hero">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/yield-logo.png" alt="" className="sc__mark" draggable={false} />
+            <div className="sc__heroText">
+              <h1 className="sc__title">YieldAI</h1>
+              <p className="sc__line">
+                An AI agent earns yield within rules you set on-chain — and you
+                never have to trust the agent.
+              </p>
+            </div>
           </div>
+          <div className="sc__scrollcue">Scroll</div>
         </div>
-      </section>
+      </div>
 
-      {/* (b) HOW IT WORKS */}
-      <section className="border-t border-hairline">
-        <div className="mx-auto max-w-6xl px-5 py-24 sm:px-8 sm:py-32">
-          <p className="mb-6 text-sm font-medium uppercase tracking-wider text-muted">
-            How it works
+      {/* --- STORY --- */}
+      <div className="sc__story">
+        {/* Thesis */}
+        <section className="sc__sec sc__sec--thesis">
+          <p className="sc__thesis">
+            Put an agent to work. <em>Keep the control.</em>
           </p>
-          <h2 className="display max-w-2xl text-3xl font-semibold leading-tight text-ink sm:text-4xl">
-            Four steps. No blind trust at any of them.
-          </h2>
+          <p className="sc__lede">
+            YieldAI&rsquo;s power is bounded on-chain, and every risky move is
+            checked by bonded guardians. The agent never holds custody — your
+            funds stay yours, and a kill switch unwinds everything on demand.
+          </p>
+        </section>
 
-          <ol className="mt-16 divide-y divide-hairline border-y border-hairline">
-            <Step
-              n="01"
-              title="Tell it what you want"
-              body="Describe your goal in plain language — an amount, a target yield, a risk appetite."
-            />
-            <Step
-              n="02"
-              title="The AI proposes a strategy"
-              body="It drafts a plan that must fit inside your on-chain mandate. Anything outside the rules is refused before it ever runs."
-            />
-            <Step
-              n="03"
-              title="A guardian committee verifies every cross-chain move"
-              body="Bonded guardians attest remote facts in a TEE. Their pooled bond exceeds the value at stake — lie and the bond is slashed. Bond is insurance."
-            />
-            <Step
-              n="04"
-              title="You keep a kill switch"
-              body="At any moment you can halt the agent and unwind positions back to stablecoins. Control never leaves you."
-            />
+        {/* Problem */}
+        <section className="sc__sec">
+          <span className="sc__kicker">The problem</span>
+          <h2 className="sc__h2">
+            An AI that moves your money is only as safe as what it&rsquo;s
+            allowed to do.
+          </h2>
+          <p className="sc__body">
+            Hand an autonomous agent your capital and you&rsquo;re trusting a
+            black box: a prompt, a model, an API key. If it hallucinates, gets
+            jailbroken, or simply errs, the money is gone. &ldquo;Trust me&rdquo;
+            is not a security model.
+          </p>
+        </section>
+
+        {/* The mandate */}
+        <section className="sc__sec sc__sec--mandate">
+          <div className="sc__split">
+            <div className="sc__split-copy">
+              <span className="sc__kicker">The mandate</span>
+              <h2 className="sc__h2 sc__h2--wide">
+                Its power is bounded on-chain.
+              </h2>
+              <p className="sc__body">
+                You set the rules — allowed protocols, a risk ceiling, a loss
+                cap, a daily limit — and they live in a contract. Anything the
+                agent proposes outside those bounds is <strong>rejected by the
+                contract</strong>, not by a promise. The agent can only ever act
+                inside the box you drew.
+              </p>
+            </div>
+            <ul className="sc__props" style={{ marginTop: 0 }}>
+              <li className="sc__prop">
+                <span className="sc__prop-ic">§</span>
+                <h3>On-chain mandate</h3>
+                <p>The rules the agent must honor are enforced by the contract.</p>
+              </li>
+              <li className="sc__prop">
+                <span className="sc__prop-ic">◇</span>
+                <h3>Risk-capped</h3>
+                <p>A deterministic score bounds every allocation; the cap is yours.</p>
+              </li>
+            </ul>
+          </div>
+        </section>
+
+        {/* The guardians */}
+        <section className="sc__sec">
+          <span className="sc__kicker">The guardians</span>
+          <h2 className="sc__h2 sc__h2--wide">
+            Every cross-chain move is verified before capital moves.
+          </h2>
+          <p className="sc__body">
+            For facts the contract can&rsquo;t see, a randomly-drawn committee of
+            bonded guardians attests the truth inside a trusted enclave. Their
+            pooled bond <strong>exceeds the value at stake</strong> on every
+            action — lie, and the bond is slashed. Bond is insurance, not a
+            formality.
+          </p>
+          <ul className="sc__props">
+            <li className="sc__prop">
+              <span className="sc__prop-ic">⬡</span>
+              <h3>TEE-attested</h3>
+              <p>Guardians run verified code in trusted enclaves, not on faith.</p>
+            </li>
+            <li className="sc__prop">
+              <span className="sc__prop-ic">⚖</span>
+              <h3>Bond as insurance</h3>
+              <p>Quorum bond is set above the value at risk, action by action.</p>
+            </li>
+            <li className="sc__prop">
+              <span className="sc__prop-ic">⟲</span>
+              <h3>Kill switch</h3>
+              <p>You can halt the agent and unwind to stablecoins at any time.</p>
+            </li>
+            <li className="sc__prop">
+              <span className="sc__prop-ic">◈</span>
+              <h3>Built on NEAR</h3>
+              <p>Live on testnet, with a real cross-chain tx landed via Chain Signatures.</p>
+            </li>
+          </ul>
+        </section>
+
+        {/* Lifecycle */}
+        <section className="sc__sec">
+          <span className="sc__kicker">How it works</span>
+          <h2 className="sc__h2">Four steps. No blind trust at any of them.</h2>
+          <ol className="sc__life">
+            <li className="sc__life-step">
+              <div>
+                <h3>Tell it what you want</h3>
+                <p>Describe your goal in plain language — an amount, a target yield, a risk appetite, an asset to stay exposed to.</p>
+              </div>
+            </li>
+            <li className="sc__life-step">
+              <div>
+                <h3>The AI proposes a strategy</h3>
+                <p>It drafts a plan from real, live markets that must fit inside your mandate. Anything outside the rules is refused before it runs.</p>
+              </div>
+            </li>
+            <li className="sc__life-step">
+              <div>
+                <h3>Guardians verify every cross-chain move</h3>
+                <p>Bonded guardians attest remote facts in a TEE. Their pooled bond exceeds the value at stake — lie and it is slashed.</p>
+              </div>
+            </li>
+            <li className="sc__life-step">
+              <div>
+                <h3>You keep a kill switch</h3>
+                <p>At any moment you can halt the agent and unwind positions back to stablecoins. Control never leaves you.</p>
+              </div>
+            </li>
           </ol>
-        </div>
-      </section>
+        </section>
 
-      {/* (c) WHY IT'S SAFE / BUILT ON NEAR */}
-      <section className="border-t border-hairline bg-mist">
-        <div className="mx-auto max-w-6xl px-5 py-24 sm:px-8 sm:py-32">
-          <p className="mb-6 text-sm font-medium uppercase tracking-wider text-muted">
-            Why it&rsquo;s safe
-          </p>
-          <h2 className="display max-w-2xl text-3xl font-semibold leading-tight text-ink sm:text-4xl">
-            Safety is a property of the system, not a policy.
-          </h2>
-
-          <div className="mt-14 grid gap-px overflow-hidden rounded-xl border border-hairline bg-hairline sm:grid-cols-2 lg:grid-cols-4">
-            <Pillar
-              title="On-chain mandate"
-              body="The rules the agent must honor live in the contract."
-            />
-            <Pillar
-              title="TEE-attested guardians"
-              body="Guardians run verified code in trusted enclaves."
-            />
-            <Pillar
-              title="Bond as insurance"
-              body="Quorum bond exceeds the value at risk on every action."
-            />
-            <Pillar
-              title="Kill switch"
-              body="Owner can unwind to stablecoins at any time."
-            />
-          </div>
-
-          <p className="mt-10 max-w-2xl text-base leading-relaxed text-muted">
-            Built on NEAR. Live on testnet today — and it has already landed a
-            real cross-chain transaction on Ethereum via Chain Signatures, no
-            bridge involved.
-          </p>
-        </div>
-      </section>
-
-      {/* (d) CLOSING CTA */}
-      <section className="border-t border-hairline">
-        <div className="mx-auto max-w-6xl px-5 py-28 text-center sm:px-8 sm:py-36">
-          <h2 className="display mx-auto max-w-3xl text-4xl font-semibold leading-[1.05] text-ink sm:text-5xl lg:text-6xl">
-            Put an agent to work. Keep the control.
-          </h2>
-          <div className="mt-12 flex justify-center">
-            <Link href="/app">
-              <Button variant="primary" size="lg">
-                Launch app →
-              </Button>
+        {/* Closing */}
+        <section className="sc__sec sc__sec--close">
+          <p className="sc__closingLine">Put an agent to work. Keep the control.</p>
+          <div className="sc__closingLinks">
+            <Link href="/app" className="sg-launch sg-launch--lg">
+              Launch app →
             </Link>
-          </div>
-        </div>
-      </section>
-
-      {/* FOOTER */}
-      <footer className="border-t border-hairline bg-mist">
-        <div className="mx-auto flex max-w-6xl flex-col gap-6 px-5 py-12 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-          <div className="flex items-center gap-2">
-            <Wordmark />
-            <span className="text-sm text-muted">· Built on NEAR</span>
-          </div>
-          <div className="flex items-center gap-6 text-sm text-muted">
-            <Link href="/docs" className="rounded-sm transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/20">
-              Docs
+            <Link href="/docs" className="sc__ghostlink">
+              Read the docs
             </Link>
-            <a
-              href={REPO}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-sm transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/20"
-            >
+            <a href={REPO} target="_blank" rel="noopener noreferrer" className="sc__ghostlink">
               GitHub
             </a>
-            <Link href="/app" className="rounded-sm transition-colors hover:text-ink focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ink/20">
-              Launch app
-            </Link>
           </div>
-        </div>
-      </footer>
-    </div>
-  );
-}
-
-function Supporting({ title, body }: { title: string; body: string }) {
-  return (
-    <div>
-      <h3 className="text-base font-semibold text-ink">{title}</h3>
-      <p className="mt-2 text-base leading-relaxed text-muted">{body}</p>
-    </div>
-  );
-}
-
-function Step({ n, title, body }: { n: string; title: string; body: string }) {
-  return (
-    <li className="grid gap-4 py-8 sm:grid-cols-[auto_1fr] sm:gap-10">
-      <span className="font-mono text-sm tabular-nums text-near">{n}</span>
-      <div className="max-w-2xl">
-        <h3 className="text-xl font-semibold text-ink">{title}</h3>
-        <p className="mt-2 text-base leading-relaxed text-muted">{body}</p>
+        </section>
       </div>
-    </li>
-  );
-}
-
-function Pillar({ title, body }: { title: string; body: string }) {
-  return (
-    <div className="bg-paper p-6">
-      <h3 className="text-sm font-semibold text-ink">{title}</h3>
-      <p className="mt-2 text-sm leading-relaxed text-muted">{body}</p>
     </div>
   );
 }
