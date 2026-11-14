@@ -299,31 +299,50 @@ function ProposalView(props: {
     },
   };
 
-  // Rebalance so the weights ALWAYS sum to 100: moving one slider takes the delta
-  // from (or gives it to) the others, in proportion to their current weights.
+  // Rebalance so the weights ALWAYS sum to 100, sharing the delta EQUALLY across the
+  // other allocations (each loses/gains the same amount), with a 0 floor and
+  // water-filling: if one would go below 0 it stops at 0 and its leftover is spread
+  // equally over the rest. E.g. four at 25%, push one to 50% -> the other three each
+  // drop by ~8.3 points.
   const setWeight = (i: number, v: number) =>
     setWeights((w) => {
       const n = w.length;
       if (n === 1) return [100];
       const target = Math.max(0, Math.min(100, Math.round(v)));
-      const rest = 100 - target; // what the other allocations must now sum to
-      const othersSum = w.reduce((s, x, j) => (j === i ? s : s + x), 0);
-      const next = w.slice();
-      next[i] = target;
-      const otherIdx = w.map((_, j) => j).filter((j) => j !== i);
-      const last = otherIdx[otherIdx.length - 1]!;
-      let assigned = 0;
-      for (const j of otherIdx) {
-        if (j === last) {
-          next[j] = rest - assigned; // absorb rounding so the total is exactly 100
-        } else {
-          const base = othersSum > 0 ? w[j]! / othersSum : 1 / otherIdx.length;
-          next[j] = Math.max(0, Math.round(base * rest));
-          assigned += next[j]!;
+      const others = w.map((val, j) => ({ j, nv: val })).filter((o) => o.j !== i);
+      const currentOthers = others.reduce((s, o) => s + o.nv, 0);
+      const diff = 100 - target - currentOthers; // >0 add equally, <0 remove (water-fill)
+      if (diff >= 0) {
+        const per = diff / others.length;
+        others.forEach((o) => (o.nv += per));
+      } else {
+        let toRemove = -diff;
+        let active = others.filter((o) => o.nv > 1e-9);
+        while (toRemove > 1e-9 && active.length > 0) {
+          const per = toRemove / active.length;
+          const minO = active.reduce((m, o) => (o.nv < m.nv ? o : m), active[0]!);
+          if (minO.nv <= per) {
+            toRemove -= minO.nv;
+            minO.nv = 0;
+            active = active.filter((o) => o !== minO && o.nv > 1e-9);
+          } else {
+            active.forEach((o) => (o.nv -= per));
+            toRemove = 0;
+          }
         }
       }
-      if (next[last]! < 0) next[last] = 0; // guard against rounding overshoot
-      return next;
+      const out = w.slice();
+      out[i] = target;
+      others.forEach((o) => (out[o.j] = o.nv));
+      const rounded = out.map((x) => Math.round(x));
+      const drift = 100 - rounded.reduce((a, b) => a + b, 0);
+      if (drift !== 0) {
+        // Absorb integer rounding drift on the largest OTHER (keeps i at target, >= 0).
+        let best = -1;
+        for (const o of others) if (best < 0 || rounded[o.j]! > rounded[best]!) best = o.j;
+        if (best >= 0) rounded[best] = Math.max(0, rounded[best]! + drift);
+      }
+      return rounded;
     });
   const reset = () => setWeights(original);
 
@@ -486,9 +505,9 @@ function AllocationEditor({
         </div>
       </div>
       <p className="mb-4 text-xs leading-relaxed text-muted">
-        Drag or type to rebalance. The weights always sum to 100%, so moving one
-        allocation adjusts the others. The blended APY, risk and every chart below
-        update live.
+        Drag or type to rebalance. The weights always sum to 100%: the change is
+        shared equally across the other allocations. The blended APY, risk and every
+        chart below update live.
       </p>
       <div className="flex flex-col gap-3">
         {allocations.map((a, i) => (
