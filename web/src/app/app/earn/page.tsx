@@ -15,9 +15,6 @@ import type {
   ProposeResult,
 } from "@/lib/earn/propose";
 
-const EXAMPLE_BRIEF =
-  "J'ai des usdc et j'ai envie de faire 5% dessus, et j'aimerai avoir une petite exposition btc d'environ 30%";
-
 type Turn = { role: "user" | "agent"; text: string };
 
 function pct(bps: number) {
@@ -134,13 +131,6 @@ export default function Earn() {
             {loading ? "Drafting…" : "Propose a strategy →"}
           </Button>
         </div>
-        <button
-          type="button"
-          onClick={() => setPrompt(EXAMPLE_BRIEF)}
-          className="focusable self-start text-left text-sm text-muted underline-offset-4 hover:text-ink hover:underline"
-        >
-          Try: &ldquo;{EXAMPLE_BRIEF}&rdquo;
-        </button>
       </form>
 
       {/* Result area */}
@@ -283,6 +273,32 @@ function ProposalView(props: {
     s.allocations.reduce((acc, a, i) => acc + a.riskScore * share(i), 0),
   );
 
+  // Normalized integer weights (sum ~100) used for display AND for what Launch
+  // registers. Editing is reflected all the way through to the on-chain mandate.
+  const displayWeights = s.allocations.map((_, i) => Math.round(share(i) * 100));
+  const editedAllocations: Allocation[] = s.allocations.map((a, i) => ({
+    ...a,
+    weightPct: displayWeights[i]!,
+  }));
+  const activeAllocations = editedAllocations.filter((a) => a.weightPct > 0);
+  const editedStrategy: ProposedStrategy = {
+    ...s,
+    expectedApyBps: blendedApyBps,
+    riskLevel: riskLabel(portfolioRisk),
+    allocations: editedAllocations,
+    mandate: {
+      ...s.mandate,
+      // Target APY and the set of allowed protocols follow the customized mix;
+      // a zeroed-out allocation drops its protocol from the mandate entirely.
+      target_apy_bps: blendedApyBps,
+      allowed_protocols: Array.from(new Set(activeAllocations.map((a) => a.label))),
+      max_share_per_protocol_bps: Math.max(
+        s.mandate.max_share_per_protocol_bps,
+        Math.max(0, ...displayWeights) * 100,
+      ),
+    },
+  };
+
   const setWeight = (i: number, v: number) =>
     setWeights((w) => w.map((x, j) => (j === i ? Math.max(0, Math.min(100, Math.round(v))) : x)));
   const normalize = () =>
@@ -368,7 +384,7 @@ function ProposalView(props: {
             items={s.allocations.map((a, i) => ({
               label: a.apyMarket ? `${a.label} · ${a.apyMarket}` : a.label,
               apyBps: a.apyBps,
-              weightPct: Math.round(share(i) * 100),
+              weightPct: displayWeights[i]!,
             }))}
           />
           <GrowthCurve apyBps={blendedApyBps} />
@@ -384,7 +400,7 @@ function ProposalView(props: {
           <div className="label mb-4">Each allocation, explained</div>
           <div className="flex flex-col gap-4">
             {s.allocations.map((a, i) => (
-              <AllocationExplain key={a.protocol} a={a} weight={Math.round(share(i) * 100)} />
+              <AllocationExplain key={a.protocol} a={a} weight={displayWeights[i]!} />
             ))}
           </div>
         </div>
@@ -404,7 +420,7 @@ function ProposalView(props: {
           </Button>
         </div>
 
-        {props.showDetail && <DetailPanel strategy={s} />}
+        {props.showDetail && <DetailPanel strategy={editedStrategy} />}
         {props.showDiscuss && (
           <div ref={discussRef} className="scroll-mt-24">
             <DiscussPanel
@@ -418,7 +434,7 @@ function ProposalView(props: {
         )}
         {props.showLaunch && (
           <div ref={launchRef} className="scroll-mt-24">
-            <LaunchPanel strategy={s} />
+            <LaunchPanel strategy={editedStrategy} />
           </div>
         )}
       </div>
@@ -749,6 +765,21 @@ function LaunchPanel({ strategy }: { strategy: ProposedStrategy }) {
           value={strategy.mandate.committee_threshold_usdc === "0" ? "Permanent" : "Threshold"}
         />
       </dl>
+
+      {/* The allocation being registered, reflects any hand-tuning above. */}
+      <div className="mt-4 flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
+        <span className="label">Allocation</span>
+        {strategy.allocations
+          .filter((a) => a.weightPct > 0)
+          .map((a, i) => (
+            <span key={a.protocol} className="text-ink">
+              {i > 0 && <span className="mr-2 text-muted">·</span>}
+              {a.label}
+              {a.apyMarket && <span className="text-muted"> {a.apyMarket}</span>}{" "}
+              <span className="num text-muted">{a.weightPct}%</span>
+            </span>
+          ))}
+      </div>
 
       {/* The mechanism */}
       <div className="mt-8">
