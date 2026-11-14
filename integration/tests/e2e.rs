@@ -584,14 +584,16 @@ async fn drive_full_execute_path<T: DevNetwork + 'static>(
             .expect("committee member in handle map")
     };
 
+    // The coordinator tracks actions as `<vault>:<id>` (no cross-vault collisions).
+    let coord_action = format!("{}:{}", vault.id(), action_id);
     // 3-of-3 approve with benign facts.
     for gid in &committee {
-        let report = guardian_report(&action_id, true, 5, false);
+        let report = guardian_report(&coord_action, true, 5, false);
         let commit = sha256_hex(report.as_bytes());
         let g = acct_of(gid);
         g.call(coordinator.id(), "submit_commit")
             .args_json(json!({
-                "action_id": action_id,
+                "action_id": coord_action,
                 "guardian_id": gid,
                 "commit_hash": commit,
                 "outlayer_proof": "CQ==",
@@ -601,11 +603,11 @@ async fn drive_full_execute_path<T: DevNetwork + 'static>(
             .into_result()?;
     }
     for gid in &committee {
-        let report = guardian_report(&action_id, true, 5, false);
+        let report = guardian_report(&coord_action, true, 5, false);
         let g = acct_of(gid);
         g.call(coordinator.id(), "reveal_report")
             .args_json(json!({
-                "action_id": action_id,
+                "action_id": coord_action,
                 "guardian_id": gid,
                 "report_json": report,
             }))
@@ -622,7 +624,7 @@ async fn drive_full_execute_path<T: DevNetwork + 'static>(
     agent
         .call(vault.id(), "execute_action")
         .args_json(json!({ "action_id": action_id }))
-        .gas(Gas::from_tgas(150))
+        .gas(Gas::from_tgas(300))
         .transact()
         .await?
         .into_result()?;
@@ -687,14 +689,15 @@ async fn drive_full_execute_path<T: DevNetwork + 'static>(
             .map(|(_, a)| a.clone())
             .expect("cc committee member")
     };
+    let cc_coord = format!("{}:{}", vault.id(), cc_id);
     for gid in &cc_committee {
         // benign facts: slippage 5 (< 50), not paused, price ~ $1.00.
-        let report = guardian_report(&cc_id, true, 5, false);
+        let report = guardian_report(&cc_coord, true, 5, false);
         let commit = sha256_hex(report.as_bytes());
         let g = cc_acct_of(gid);
         g.call(coordinator.id(), "submit_commit")
             .args_json(json!({
-                "action_id": cc_id, "guardian_id": gid, "commit_hash": commit,
+                "action_id": cc_coord, "guardian_id": gid, "commit_hash": commit,
                 "outlayer_proof": "Bw==",
             }))
             .transact()
@@ -702,11 +705,11 @@ async fn drive_full_execute_path<T: DevNetwork + 'static>(
             .into_result()?;
     }
     for gid in &cc_committee {
-        let report = guardian_report(&cc_id, true, 5, false);
+        let report = guardian_report(&cc_coord, true, 5, false);
         let g = cc_acct_of(gid);
         g.call(coordinator.id(), "reveal_report")
             .args_json(json!({
-                "action_id": cc_id, "guardian_id": gid, "report_json": report,
+                "action_id": cc_coord, "guardian_id": gid, "report_json": report,
             }))
             .transact()
             .await?
@@ -715,7 +718,7 @@ async fn drive_full_execute_path<T: DevNetwork + 'static>(
     agent
         .call(vault.id(), "execute_action")
         .args_json(json!({ "action_id": cc_id }))
-        .gas(Gas::from_tgas(200))
+        .gas(Gas::from_tgas(300))
         .transact()
         .await?
         .into_result()?;

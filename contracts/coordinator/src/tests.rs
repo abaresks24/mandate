@@ -196,6 +196,30 @@ fn rotation_prevents_back_to_back_same_vault() {
 }
 
 #[test]
+fn one_vault_can_draw_indefinitely_with_six_guardians() {
+    // Rotation excludes only the PREVIOUS committee, so a single vault alternates
+    // between two halves forever instead of exhausting the pool after two draws.
+    let mut c = setup();
+    for i in 1..=5 {
+        register(&mut c, accounts(i), 50);
+    }
+    register(&mut c, "guardian6.near".parse().unwrap(), 50);
+    let vault = accounts(0);
+    let mut prev: Vec<GuardianId> = vec![];
+    for round in 0..6u8 {
+        testing_env!(ctx(owner(), NearToken::from_near(0), vec![round * 17 + 3; 32]).build());
+        let drawn = c
+            .draw_committee(vault.clone(), format!("a{round}"), U128(0))
+            .unwrap_or_else(|_| panic!("draw {round} must succeed"));
+        assert_eq!(drawn.len(), 3);
+        for g in &drawn {
+            assert!(!prev.contains(g), "round {round}: {g} sat on two consecutive committees");
+        }
+        prev = drawn;
+    }
+}
+
+#[test]
 fn rotation_is_per_vault_not_global() {
     let mut c = setup();
     register(&mut c, accounts(1), 50);

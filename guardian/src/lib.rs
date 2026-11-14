@@ -371,7 +371,7 @@ mod tests {
                 max_slippage_bps: 50,
             },
             vault_id: "v12.vaults.deployer.testnet".into(),
-            coordinator_rpc: "https://rpc.testnet.near.org".into(),
+            coordinator_rpc: "https://test.rpc.fastnear.com".into(),
             reveal: false,
         }
     }

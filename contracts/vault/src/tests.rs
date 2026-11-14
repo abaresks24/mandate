@@ -304,16 +304,35 @@ fn execute_crosschain_requests_signature() {
 fn execute_blocked_without_threshold() {
     testing_env!(ctx_agent().build());
     let mut v = new_vault();
-    let id = v.propose_action(ActionTemplate::SupplyRhea {
-        token: "usdc".into(),
+    // Cross-chain actions need the committee: the contract can't read Sepolia.
+    let id = v.propose_action(ActionTemplate::AllocateCrossChain {
+        chain: "ethereum-sepolia".into(),
+        protocol: "morpho".into(),
+        market: "0x000000000000000000000000000000000000dEaD".into(),
         amount: U128(1_000_000),
-        market: "m".into(),
+        max_slippage_bps: 50,
     });
     let no = Tally {
         approvals: 1,
         threshold_met: false,
     };
     v.execute_action_inner(id, no, facts_ok());
+}
+
+#[test]
+fn near_native_action_executes_without_committee() {
+    // SupplyRhea is verified by the contract itself: no tally needed.
+    testing_env!(ctx_agent().build());
+    let mut v = new_vault();
+    v.test_seed_idle(50_000_000);
+    let id = v.propose_action(ActionTemplate::SupplyRhea {
+        token: "usdc".into(),
+        amount: U128(10_000_000),
+        market: "ref-finance-101.testnet".into(),
+    });
+    let none = Tally { approvals: 0, threshold_met: false };
+    v.execute_action_inner(id.clone(), none, facts_ok());
+    assert_eq!(v.view_action(id).unwrap().status, ActionStatus::Executed);
 }
 
 #[test]
@@ -510,4 +529,151 @@ fn execute_action_rejects_stranger() {
     });
     testing_env!(ctx_stranger().build());
     let _ = v.execute_action(id);
+}
+
+// ---------------------------------------------------------------------------
+// live-flow additions: deposit, update_mandate, evm params, coordinator ids
+// ---------------------------------------------------------------------------
+fn evm_params(nonce: u64) -> EvmParams {
+    EvmParams {
+        nonce,
+        max_fee_per_gas: U128(3_000_000_000),
+        max_priority_fee_per_gas: U128(1_000_000_000),
+        gas_limit: 80_000,
+    }
+}
+
+#[test]
+fn deposit_usdc_by_owner_credits_idle() {
+    testing_env!(ctx_owner().build());
+    let mut v = new_vault();
+    v.deposit_usdc(U128(10_000_000));
+    v.deposit_usdc(U128(5_000_000));
+    let pos = v.view_positions();
+    assert_eq!(pos.idle_usdc, U128(15_000_000));
+    assert_eq!(pos.total_usdc, U128(15_000_000));
+}
+
+#[test]
+#[should_panic(expected = "owner only")]
+fn deposit_usdc_rejects_stranger() {
+    testing_env!(ctx_owner().build());
+    let mut v = new_vault();
+    testing_env!(ctx_stranger().build());
+    v.deposit_usdc(U128(1));
+}
+
+#[test]
+fn update_mandate_replaces_rules_and_resets_cap() {
+    testing_env!(ctx_agent().build());
+    let mut v = new_vault();
+    v.propose_action(ActionTemplate::SupplyRhea {
+        token: "usdc".into(),
+        amount: U128(1_000_000_000),
+        market: "ref-finance-101.testnet".into(),
+    });
+    testing_env!(ctx_owner().build());
+    let mut m = base_mandate();
+    m.allowed_protocols = vec!["rhea".to_string()];
+    m.allowed_chains = vec!["near".to_string()];
+    v.update_mandate(m.clone());
+    assert_eq!(v.view_mandate(), m);
+    // chain no longer allowed => cross-chain proposals now fail closed
+    testing_env!(ctx_agent().build());
+    let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        v.propose_action(ActionTemplate::AllocateCrossChain {
+            chain: "ethereum-sepolia".into(),
+            protocol: "morpho".into(),
+            market: "0x000000000000000000000000000000000000dEaD".into(),
+            amount: U128(1_000_000),
+            max_slippage_bps: 50,
+        })
+    }));
+    assert!(r.is_err());
+}
+
+#[test]
+#[should_panic(expected = "owner only")]
+fn update_mandate_rejects_stranger() {
+    testing_env!(ctx_owner().build());
+    let mut v = new_vault();
+    testing_env!(ctx_stranger().build());
+    v.update_mandate(base_mandate());
+}
+
+#[test]
+#[should_panic(expected = "mandate.owner must equal the vault owner")]
+fn update_mandate_rejects_foreign_owner() {
+    testing_env!(ctx_owner().build());
+    let mut v = new_vault();
+    let mut m = base_mandate();
+    m.owner = "bob.testnet".parse().unwrap();
+    v.update_mandate(m);
+}
+
+#[test]
+fn evm_params_flow_into_the_built_tx() {
+    testing_env!(ctx_agent().build());
+    let mut v = new_vault();
+    v.test_seed_idle(50_000_000);
+    v.set_evm_params(evm_params(7));
+    let id = v.propose_action(ActionTemplate::AllocateCrossChain {
+        chain: "ethereum-sepolia".into(),
+        protocol: "morpho".into(),
+        market: "0x000000000000000000000000000000000000dEaD".into(),
+        amount: U128(10_000_000),
+        max_slippage_bps: 50,
+    });
+    v.execute_action_inner(id.clone(), tally_ok(), facts_ok());
+    let tx: near_sdk::serde_json::Value =
+        near_sdk::serde_json::from_str(&v.view_evm_tx(id).expect("tx recorded")).unwrap();
+    assert_eq!(tx["nonce"], 7);
+    assert_eq!(tx["gas_limit"], 80_000);
+    assert_eq!(tx["max_fee_per_gas"].to_string(), "3000000000");
+    assert_eq!(
+        tx["to"].as_str().unwrap().to_lowercase(),
+        "0x000000000000000000000000000000000000dead"
+    );
+    assert_eq!(tx["value"], "0"); // value can never be set by params
+}
+
+#[test]
+#[should_panic(expected = "gas_limit out of bounds")]
+fn evm_params_reject_huge_gas() {
+    testing_env!(ctx_agent().build());
+    let mut v = new_vault();
+    let mut p = evm_params(0);
+    p.gas_limit = 5_000_000;
+    v.set_evm_params(p);
+}
+
+#[test]
+#[should_panic(expected = "max_fee_per_gas above 200 gwei")]
+fn evm_params_reject_huge_fee() {
+    testing_env!(ctx_agent().build());
+    let mut v = new_vault();
+    let mut p = evm_params(0);
+    p.max_fee_per_gas = U128(500_000_000_000);
+    v.set_evm_params(p);
+}
+
+#[test]
+#[should_panic(expected = "caller is neither owner nor agent")]
+fn evm_params_reject_stranger() {
+    testing_env!(ctx_owner().build());
+    let mut v = new_vault();
+    testing_env!(ctx_stranger().build());
+    v.set_evm_params(evm_params(0));
+}
+
+#[test]
+fn coordinator_action_ids_are_namespaced_by_vault() {
+    testing_env!(ctx_agent()
+        .current_account_id("demo.vaults.deployer.testnet".parse().unwrap())
+        .build());
+    let v = new_vault();
+    assert_eq!(
+        v.view_coord_action_id("a1".into()),
+        "demo.vaults.deployer.testnet:a1"
+    );
 }

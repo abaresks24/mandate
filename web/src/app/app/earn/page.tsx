@@ -8,6 +8,7 @@ import { useWallet } from "@/components/wallet/WalletProvider";
 import { CROSSCHAIN } from "@/lib/near";
 import { registerMandate, txExplorerUrl } from "@/lib/registry";
 import { Donut, GrowthCurve, ApyBars, type Slice } from "@/components/StrategyVisuals";
+import { LiveRun } from "@/components/LiveRun";
 import { riskLabel } from "@/lib/earn/risk";
 import type {
   Allocation,
@@ -915,7 +916,7 @@ function LaunchPanel({ strategy }: { strategy: ProposedStrategy }) {
 
       {/* Real proofs */}
       <div className="mt-8 rounded-xl border border-hairline bg-mist p-5">
-        <div className="label">This mechanism is already live</div>
+        <div className="label">An earlier run of this mechanism</div>
         <ul className="mt-3 flex flex-col gap-2 text-sm text-ink">
           <li className="flex items-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-near" aria-hidden />
@@ -979,6 +980,13 @@ function LaunchPanel({ strategy }: { strategy: ProposedStrategy }) {
                 View in Portfolio →
               </Link>
             </div>
+            <LiveRun
+              autoStart
+              mandate={strategy.mandate}
+              weights={Object.fromEntries(
+                strategy.allocations.map((a) => [a.label, a.weightPct]),
+              )}
+            />
           </div>
         ) : (
           <>
@@ -998,9 +1006,9 @@ function LaunchPanel({ strategy }: { strategy: ProposedStrategy }) {
               Connected as <span className="num text-ink">{accountId}</span>. Deploying
               signs a real <span className="num">register_mandate</span> transaction
               (0.01 NEAR attached) that records this mandate on-chain under your account.
-              Funding and deploying the per-mandate vault is the documented next step, proven
-              via the CLI scripts; everything downstream (committee verification, cross-chain
-              execution) is already live on testnet.
+              Right after, the live run starts: the vault is armed with your mandate, the agent
+              proposes, a bonded committee attests, and the vault signs a real Ethereum Sepolia
+              transaction through Chain Signatures.
             </p>
           </>
         )}

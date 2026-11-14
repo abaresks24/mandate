@@ -122,6 +122,7 @@ enum StorageKey {
     Challenges,
     Reputation,
     GuardianStats,
+    LastCommittee,
 }
 
 /// Aggregate per-guardian activity counters (for `view_guardian_history`).
@@ -157,6 +158,12 @@ pub struct Coordinator {
 
     /// guardian_id -> activity stats.
     guardian_stats: LookupMap<GuardianId, GuardianStats>,
+
+    /// vault -> the committee drawn for that vault's most recent action. Rotation
+    /// excludes exactly these guardians from the vault's NEXT draw, so a single
+    /// vault can keep drawing forever (alternating committees) instead of
+    /// exhausting the pool the way a per-guardian `last_drawn_vault` flag does.
+    last_committee: LookupMap<AccountId, Vec<GuardianId>>,
 }
 
 #[near]
@@ -173,6 +180,7 @@ impl Coordinator {
             next_challenge: 0,
             reputation: LookupMap::new(StorageKey::Reputation),
             guardian_stats: LookupMap::new(StorageKey::GuardianStats),
+            last_committee: LookupMap::new(StorageKey::LastCommittee),
         }
     }
 
@@ -289,8 +297,8 @@ impl Coordinator {
     /// Draw a committee of 3 guardians for `action_id` on `vault_id`.
     ///
     /// - Bond-weighted random sampling using `env::random_seed()`.
-    /// - Rotation: a guardian whose `last_drawn_vault == vault_id` is excluded, so
-    ///   it can't be drawn twice in a row for the SAME vault.
+    /// - Rotation: guardians on this vault's PREVIOUS committee are excluded, so
+    ///   no guardian sits on two consecutive committees for the SAME vault.
     /// - INVARIANT: sum(bond of the 3 drawn, in USDC 6-dp) >= `action_value_usdc`,
     ///   else returns `Err(QuorumBondTooLow)` so the vault splits or refuses.
     ///
@@ -309,13 +317,15 @@ impl Coordinator {
         action_value_usdc: U128,
     ) -> Result<Vec<GuardianId>, CoordinatorError> {
         // Eligible = Active status AND not last-drawn for THIS vault (rotation).
+        let previous: Vec<GuardianId> = self
+            .last_committee
+            .get(&vault_id)
+            .cloned()
+            .unwrap_or_default();
         let mut pool: Vec<(GuardianId, u128)> = self
             .guardians
             .iter()
-            .filter(|(_, g)| {
-                g.status == GuardianStatus::Active
-                    && g.last_drawn_vault.as_ref() != Some(&vault_id)
-            })
+            .filter(|(id, g)| g.status == GuardianStatus::Active && !previous.contains(*id))
             .map(|(id, g)| (id.clone(), g.bond.as_yoctonear()))
             .collect();
 
@@ -379,6 +389,7 @@ impl Coordinator {
                 self.guardian_stats.insert(gid.clone(), st);
             }
         }
+        self.last_committee.insert(vault_id.clone(), drawn.clone());
         let slots = vec![Attestation::default(); COMMITTEE_SIZE];
         self.actions.insert(
             action_id.clone(),

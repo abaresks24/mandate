@@ -34,8 +34,8 @@ export const NEAR_CONFIG = {
   network: process.env.NEXT_PUBLIC_NEAR_NETWORK ?? "testnet",
   nodeUrl:
     process.env.NEXT_PUBLIC_NEAR_NETWORK === "mainnet"
-      ? "https://rpc.mainnet.near.org"
-      : "https://rpc.testnet.near.org",
+      ? "https://free.rpc.fastnear.com"
+      : "https://test.rpc.fastnear.com",
   coordinatorId:
     process.env.NEXT_PUBLIC_COORDINATOR_ID ??
     "coordinator.mandate-arthur.testnet",

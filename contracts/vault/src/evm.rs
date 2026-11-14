@@ -237,15 +237,30 @@ pub fn eip1559_unsigned_rlp(tx: &EvmTx) -> Vec<u8> {
 ///
 /// Gas/fee/nonce defaults are conservative Sepolia values; the live path refreshes
 /// them from the committee-attested RPC block before the hash is recomputed.
+#[allow(dead_code)]
 pub fn build_allocate_tx(market: &str, amount: U128) -> EvmTx {
+    build_allocate_tx_with(market, amount, None)
+}
+
+/// Same as `build_allocate_tx`, but nonce/fee/gas come from owner/agent-set
+/// `EvmParams` (bounded in `Vault::set_evm_params`) when present.
+pub fn build_allocate_tx_with(
+    market: &str,
+    amount: U128,
+    params: Option<&crate::types::EvmParams>,
+) -> EvmTx {
     let calldata = encode_supply_calldata(market, amount.0);
+    let (nonce, prio, max_fee, gas) = match params {
+        Some(p) => (p.nonce, p.max_priority_fee_per_gas.0, p.max_fee_per_gas.0, p.gas_limit),
+        None => (0, 1_000_000_000, 30_000_000_000, 250_000),
+    };
     EvmTx {
         to: market.to_string(),
         chain_id: SEPOLIA_CHAIN_ID,
-        nonce: 0,
-        max_priority_fee_per_gas: 1_000_000_000,     // 1 gwei
-        max_fee_per_gas: 30_000_000_000,             // 30 gwei
-        gas_limit: 250_000,
+        nonce,
+        max_priority_fee_per_gas: prio,
+        max_fee_per_gas: max_fee,
+        gas_limit: gas,
         data: format!("0x{}", hex::encode(&calldata)),
         value: "0".to_string(),
         amount_usdc: amount,

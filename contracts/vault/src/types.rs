@@ -167,3 +167,15 @@ pub struct GuardianFacts {
     #[serde(default)]
     pub price_usdc: Option<u64>,
 }
+
+/// EVM tx parameters the owner/agent may set before a cross-chain execute.
+/// Destination, calldata and value are NOT here: they stay template-derived.
+#[derive(BorshDeserialize, BorshSerialize, Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[borsh(crate = "near_sdk::borsh")]
+#[serde(crate = "near_sdk::serde")]
+pub struct EvmParams {
+    pub nonce: u64,
+    pub max_fee_per_gas: U128,
+    pub max_priority_fee_per_gas: U128,
+    pub gas_limit: u64,
+}

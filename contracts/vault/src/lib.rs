@@ -24,7 +24,9 @@ pub use types::*;
 use external::{ext_coordinator, ext_mpc_signer};
 use near_sdk::json_types::U128;
 use near_sdk::store::{LookupMap, Vector};
-use near_sdk::{env, near, require, AccountId, Gas, PanicOnDefault, Promise, PublicKey};
+use near_sdk::{
+    env, near, require, AccountId, Gas, NearToken, PanicOnDefault, Promise, PublicKey,
+};
 
 /// Rolling daily cap window, in nanoseconds (24h).
 const DAY_NANOS: u64 = 24 * 60 * 60 * 1_000_000_000;
@@ -36,7 +38,7 @@ const USDC_PRICE_CEIL: u64 = 1_005_000; // $1.005
 /// Gas reserved for the `coordinator.tally_facts` cross-contract call.
 const GAS_TALLY: Gas = Gas::from_tgas(10);
 /// Gas reserved for the `on_tally` callback (it mutates vault state + logs).
-const GAS_ON_TALLY: Gas = Gas::from_tgas(30);
+const GAS_ON_TALLY: Gas = Gas::from_tgas(200);
 /// Gas reserved for the `coordinator.draw_committee` cross-contract call.
 const GAS_DRAW: Gas = Gas::from_tgas(20);
 /// MPC signer account (Chain Signatures) — `v1.signer-prod.testnet` per SPEC.
@@ -45,7 +47,10 @@ const GAS_DRAW: Gas = Gas::from_tgas(20);
 const MPC_SIGNER: &str = "v1.signer-prod.testnet";
 /// Gas attached to the MPC `sign` request.
 #[cfg_attr(test, allow(dead_code))]
-const GAS_SIGN: Gas = Gas::from_tgas(50);
+const GAS_SIGN: Gas = Gas::from_tgas(100);
+/// Gas for the `on_signed` callback that stores the MPC signature.
+#[cfg_attr(test, allow(dead_code))]
+const GAS_ON_SIGNED: Gas = Gas::from_tgas(15);
 
 pub type ActionId = String;
 
@@ -80,6 +85,16 @@ pub struct Vault {
     /// builds the CORRECT MPC payload without a live signer. `None` until the
     /// first AllocateCrossChain executes.
     last_sign_request: Option<SignRequest>,
+
+    /// Optional EVM tx parameters (nonce, fees, gas) set by the owner/agent just
+    /// before a cross-chain execute. `to`/`data`/`value` are NEVER settable: those
+    /// stay derived from the validated template.
+    evm_params: Option<EvmParams>,
+    /// action_id -> JSON of the exact unsigned EvmTx the vault built + sent to the
+    /// MPC signer (so a relayer can reassemble the signed tx byte-for-byte).
+    evm_txs: LookupMap<ActionId, String>,
+    /// action_id -> raw JSON of the MPC `SignatureResponse` (stored by `on_signed`).
+    signatures: LookupMap<ActionId, String>,
 }
 
 #[near]
@@ -108,10 +123,60 @@ impl Vault {
             day_window_start: env::block_timestamp(),
             day_spent_usdc: 0,
             last_sign_request: None,
+            evm_params: None,
+            evm_txs: LookupMap::new(b"t"),
+            signatures: LookupMap::new(b"s"),
         };
         // Seed idle balance explicitly via deposit flows in integration; start empty.
         let _ = &mut v.idle_usdc;
         v
+    }
+
+    // -------------------------------------------------------------------------
+    // 1b. owner controls: re-arm the mandate, record deposits, EVM tx params.
+    // -------------------------------------------------------------------------
+
+    /// Owner-only: replace the vault's mandate (e.g. with the one the user just
+    /// registered). `mandate.owner` must stay the vault owner. Daily-cap accounting
+    /// is reset because the new mandate defines a new budget.
+    pub fn update_mandate(&mut self, mandate: Mandate) {
+        self.assert_owner();
+        require!(
+            mandate.owner == self.owner,
+            "mandate.owner must equal the vault owner"
+        );
+        self.mandate = mandate;
+        self.day_window_start = env::block_timestamp();
+        self.day_spent_usdc = 0;
+    }
+
+    /// Owner-only: record a USDC deposit (6-dp) into the vault's idle balance.
+    /// This is ledger accounting (testnet has no canonical USDC to custody); the
+    /// deterministic gates then bound what the agent may do with it.
+    pub fn deposit_usdc(&mut self, amount: U128) {
+        self.assert_owner();
+        require!(amount.0 > 0, "deposit must be positive");
+        self.idle_usdc = self
+            .idle_usdc
+            .checked_add(amount.0)
+            .expect("idle overflow");
+    }
+
+    /// Owner or agent: set the EVM nonce/fee/gas used by the next cross-chain
+    /// build. Bounded so it can't be used to burn funds on fees; it can NOT change
+    /// the destination, calldata or value.
+    pub fn set_evm_params(&mut self, params: EvmParams) {
+        self.assert_owner_or_agent();
+        require!(params.gas_limit >= 21_000 && params.gas_limit <= 500_000, "gas_limit out of bounds");
+        require!(
+            params.max_fee_per_gas.0 <= 200_000_000_000,
+            "max_fee_per_gas above 200 gwei"
+        );
+        require!(
+            params.max_priority_fee_per_gas.0 <= params.max_fee_per_gas.0,
+            "priority fee above max fee"
+        );
+        self.evm_params = Some(params);
     }
 
     // -------------------------------------------------------------------------
@@ -222,7 +287,7 @@ impl Vault {
         let value = U128(state.template.amount_usdc());
         ext_coordinator::ext(self.coordinator.clone())
             .with_static_gas(GAS_DRAW)
-            .draw_committee(env::current_account_id(), action_id, value)
+            .draw_committee(env::current_account_id(), self.coord_id(&action_id), value)
     }
 
     // -------------------------------------------------------------------------
@@ -262,10 +327,20 @@ impl Vault {
             state.status == ActionStatus::Proposed,
             "action is not in Proposed state"
         );
+        if !Self::needs_committee(&state.template) {
+            // NEAR-native: the contract is its own verifier, no committee, no
+            // cross-contract round trip. Executes (and settles) in this call.
+            self.execute_action_inner(
+                action_id,
+                Tally { approvals: 0, threshold_met: false },
+                GuardianFacts { observed_slippage_bps: 0, protocol_paused: false, price_usdc: None },
+            );
+            return Promise::new(env::current_account_id());
+        }
 
         ext_coordinator::ext(self.coordinator.clone())
             .with_static_gas(GAS_TALLY)
-            .tally_facts(action_id.clone())
+            .tally_facts(self.coord_id(&action_id))
             .then(
                 Self::ext(env::current_account_id())
                     .with_static_gas(GAS_ON_TALLY)
@@ -310,8 +385,6 @@ impl Vault {
         tally: Tally,
         facts: GuardianFacts,
     ) {
-        require!(tally.threshold_met, "coordinator tally: threshold not met");
-
         let mut state = self
             .actions
             .get(&action_id)
@@ -321,6 +394,12 @@ impl Vault {
             state.status == ActionStatus::Proposed,
             "action is not in Proposed state"
         );
+        // Committee attestation is required for EXTERNAL (cross-chain) actions only:
+        // the contract cannot read Sepolia, so it needs the bonded quorum. NEAR-native
+        // actions are verified by the contract itself (SPEC demo thesis table).
+        if Self::needs_committee(&state.template) {
+            require!(tally.threshold_met, "coordinator tally: threshold not met");
+        }
 
         // Apply committee FACTS to mandate rules. Fail closed -> mark Rejected.
         if let Some(reason) = self.facts_violate_mandate(&state.template, &facts) {
@@ -333,7 +412,7 @@ impl Vault {
         }
 
         // Facts OK -> execute by kind.
-        let note = self.dispatch_execution(&state.template);
+        let note = self.dispatch_execution(&action_id, &state.template);
         self.apply_position_effects(&state.template);
         state.status = ActionStatus::Executed;
         state.note = Some(note);
@@ -379,7 +458,7 @@ impl Vault {
     /// Execute by kind. Returns a human-readable note. In unit tests this records
     /// the intended on-chain effect; in integration it fires the real cross-contract
     /// call / signing request (see `external` + `evm`).
-    fn dispatch_execution(&mut self, template: &ActionTemplate) -> String {
+    fn dispatch_execution(&mut self, action_id: &str, template: &ActionTemplate) -> String {
         match template {
             ActionTemplate::SupplyRhea {
                 token,
@@ -396,7 +475,7 @@ impl Vault {
                 market, amount, ..
             } => {
                 // Vault builds the EVM tx + requests a Chain Signatures signature.
-                let tx = evm::build_allocate_tx(market, *amount);
+                let tx = evm::build_allocate_tx_with(market, *amount, self.evm_params.as_ref());
                 let payload = evm::signer_payload(&tx);
                 let req = SignRequest {
                     payload: payload.clone(),
@@ -412,12 +491,24 @@ impl Vault {
                 // sandbox path from hard-failing: guarded behind `cfg(not(test))`
                 // so unit tests stay pure, but the payload is always recorded.
                 self.last_sign_request = Some(req.clone());
+                self.evm_txs.insert(
+                    action_id.to_string(),
+                    near_sdk::serde_json::to_string(&tx).expect("evm tx json"),
+                );
                 #[cfg(not(test))]
                 {
                     if let Ok(signer) = MPC_SIGNER.parse::<AccountId>() {
+                        // The MPC `sign` requires >= 1 yoctoNEAR; its signature is
+                        // delivered to `on_signed`, which stores it for the relayer.
                         let _p = ext_mpc_signer::ext(signer)
                             .with_static_gas(GAS_SIGN)
-                            .sign(req);
+                            .with_attached_deposit(NearToken::from_yoctonear(1))
+                            .sign(req)
+                            .then(
+                                Self::ext(env::current_account_id())
+                                    .with_static_gas(GAS_ON_SIGNED)
+                                    .on_signed(action_id.to_string()),
+                            );
                     }
                 }
                 format!(
@@ -450,10 +541,9 @@ impl Vault {
         // Validate protocol/chain still inside mandate (de-risking skips cap/share).
         self.validate_template(&template);
 
-        let note = self.dispatch_execution(&template);
-        self.apply_position_effects(&template);
-
         let id = self.mint_action_id();
+        let note = self.dispatch_execution(&id, &template);
+        self.apply_position_effects(&template);
         self.actions.insert(
             id.clone(),
             ActionState {
@@ -507,6 +597,23 @@ impl Vault {
         id
     }
 
+    /// Callback from the MPC signer: store the raw `SignatureResponse` JSON so the
+    /// relayer can assemble + broadcast the signed Sepolia tx.
+    #[private]
+    pub fn on_signed(
+        &mut self,
+        action_id: ActionId,
+        #[callback_result] result: Result<near_sdk::serde_json::Value, near_sdk::PromiseError>,
+    ) {
+        match result {
+            Ok(v) => {
+                self.signatures.insert(action_id.clone(), v.to_string());
+                env::log_str(&format!("on_signed: stored MPC signature for {}", action_id));
+            }
+            Err(_) => env::log_str(&format!("on_signed: MPC signing FAILED for {}", action_id)),
+        }
+    }
+
     // -------------------------------------------------------------------------
     // 6. views
     // -------------------------------------------------------------------------
@@ -527,6 +634,26 @@ impl Vault {
         self.actions.get(&action_id).cloned()
     }
 
+    /// The id under which this vault's action is tracked on the coordinator
+    /// (`<vault account>:<action id>`), so ids never collide across vaults.
+    pub fn view_coord_action_id(&self, action_id: ActionId) -> String {
+        self.coord_id(&action_id)
+    }
+
+    /// JSON of the exact unsigned EVM tx built for a cross-chain action.
+    pub fn view_evm_tx(&self, action_id: ActionId) -> Option<String> {
+        self.evm_txs.get(&action_id).cloned()
+    }
+
+    /// Raw MPC signature JSON for an action, once `on_signed` has stored it.
+    pub fn view_signature(&self, action_id: ActionId) -> Option<String> {
+        self.signatures.get(&action_id).cloned()
+    }
+
+    pub fn view_evm_params(&self) -> Option<EvmParams> {
+        self.evm_params.clone()
+    }
+
     pub fn view_mandate(&self) -> Mandate {
         self.mandate.clone()
     }
@@ -541,6 +668,16 @@ impl Vault {
     // -------------------------------------------------------------------------
     // helpers
     // -------------------------------------------------------------------------
+
+    /// Only cross-chain allocations need the committee (the contract can't read the
+    /// other chain). NEAR-native templates are verified by the contract itself.
+    fn needs_committee(template: &ActionTemplate) -> bool {
+        matches!(template, ActionTemplate::AllocateCrossChain { .. })
+    }
+
+    fn coord_id(&self, action_id: &str) -> String {
+        format!("{}:{}", env::current_account_id(), action_id)
+    }
 
     fn assert_owner(&self) {
         require!(
