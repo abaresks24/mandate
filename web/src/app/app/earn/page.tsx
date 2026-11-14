@@ -21,6 +21,33 @@ function pct(bps: number) {
   return `${(bps / 100).toFixed(1)}%`;
 }
 
+function fmtUsd(n: number): string {
+  return "$" + Math.round(n).toLocaleString("en-US");
+}
+
+// Seed the deposit amount from the brief when there is a clear USD-ish figure
+// ("50,000 USDC", "50k", "$10,000"). Bare small numbers and percentages are
+// ignored, so "around 8%" or "2 btc" fall back to the default.
+function parseAmount(brief: string): number {
+  const t = brief.toLowerCase();
+  const re =
+    /(?:\$|€|£)\s?(\d[\d.,]*)\s*(k|m|bn)?|\b(\d[\d.,]*)\s*(k|m|bn)\b|\b(\d{3,}[\d.,]*)\s*(usdc|usdt|dai|usd|dollars?|euros?)\b/g;
+  let best = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(t)) !== null) {
+    const num = m[1] || m[3] || m[5];
+    const suf = m[2] || m[4];
+    if (!num) continue;
+    let n = parseFloat(num.replace(/,/g, ""));
+    if (!Number.isFinite(n)) continue;
+    if (suf === "k") n *= 1e3;
+    else if (suf === "m") n *= 1e6;
+    else if (suf === "bn") n *= 1e9;
+    if (n > best) best = n;
+  }
+  return best >= 1 ? Math.round(best) : 10000;
+}
+
 export default function Earn() {
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
@@ -150,6 +177,7 @@ export default function Earn() {
         {!loading && !error && strategy && (
           <ProposalView
             strategy={strategy}
+            brief={prompt}
             showDetail={showDetail}
             showDiscuss={showDiscuss}
             showLaunch={showLaunch}
@@ -220,6 +248,7 @@ function RefusedState({ reason, code }: { reason: string; code: string }) {
 
 function ProposalView(props: {
   strategy: ProposedStrategy;
+  brief: string;
   showDetail: boolean;
   showDiscuss: boolean;
   showLaunch: boolean;
@@ -264,6 +293,14 @@ function ProposalView(props: {
   const total = weights.reduce((x, y) => x + y, 0);
   const share = (i: number) => (total > 0 ? weights[i]! / total : 0); // normalized 0..1
   const edited = weights.some((w, i) => w !== original[i]);
+
+  // Deposit amount (USD value deployed): seed from the brief, user-editable.
+  const [amount, setAmount] = useState<number>(() => parseAmount(props.brief));
+  useEffect(() => {
+    setAmount(parseAmount(props.brief));
+    // Reseed when a new strategy is proposed.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [s]);
 
   // Live-recomputed headline figures from the (possibly edited) weights.
   const blendedApyBps = Math.round(
@@ -372,7 +409,7 @@ function ProposalView(props: {
 
       <div className="surface-card p-6 sm:p-8">
         {/* Headline */}
-        <div className="flex flex-wrap items-end justify-between gap-6 border-b border-hairline pb-6">
+        <div className="grid gap-6 border-b border-hairline pb-6 sm:grid-cols-3">
           <div>
             <div className="label">
               Expected APY {edited && <span className="text-near">· customized</span>}
@@ -381,7 +418,31 @@ function ProposalView(props: {
               {pct(blendedApyBps)}
             </div>
           </div>
-          <div className="text-right">
+          <div>
+            <div className="label">Deposit</div>
+            <div className="mt-1 flex items-baseline gap-1 text-4xl font-semibold text-ink">
+              <span>$</span>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={amount.toLocaleString("en-US")}
+                onChange={(e) => {
+                  const n = Number(e.target.value.replace(/[^\d]/g, ""));
+                  setAmount(Number.isFinite(n) ? n : 0);
+                }}
+                aria-label="Deposit amount in USD"
+                className="num w-full min-w-0 max-w-[8ch] border-b border-hairline bg-transparent outline-none focus:border-near"
+              />
+            </div>
+            <div className="mt-1.5 text-xs text-muted">
+              projected to{" "}
+              <span className="num text-ink">
+                {fmtUsd(amount * (1 + blendedApyBps / 10000))}
+              </span>{" "}
+              in 12 months
+            </div>
+          </div>
+          <div className="sm:text-right">
             <div className="label">Risk level</div>
             <div className="num mt-1 text-3xl font-semibold text-ink">
               {riskLabel(portfolioRisk)}
@@ -401,6 +462,7 @@ function ProposalView(props: {
           allocations={s.allocations}
           weights={weights}
           total={total}
+          amount={amount}
           edited={edited}
           onChange={setWeight}
           onReset={reset}
@@ -421,7 +483,7 @@ function ProposalView(props: {
               weightPct: displayWeights[i]!,
             }))}
           />
-          <GrowthCurve apyBps={blendedApyBps} />
+          <GrowthCurve apyBps={blendedApyBps} principal={amount} />
         </div>
 
         <p className="mt-3 text-xs leading-relaxed text-muted">
@@ -434,7 +496,12 @@ function ProposalView(props: {
           <div className="label mb-4">Each allocation, explained</div>
           <div className="flex flex-col gap-4">
             {s.allocations.map((a, i) => (
-              <AllocationExplain key={a.protocol} a={a} weight={displayWeights[i]!} />
+              <AllocationExplain
+                key={a.protocol}
+                a={a}
+                weight={displayWeights[i]!}
+                dollars={Math.round((amount * displayWeights[i]!) / 100)}
+              />
             ))}
           </div>
         </div>
@@ -480,6 +547,7 @@ function AllocationEditor({
   allocations,
   weights,
   total,
+  amount,
   edited,
   onChange,
   onReset,
@@ -487,6 +555,7 @@ function AllocationEditor({
   allocations: Allocation[];
   weights: number[];
   total: number;
+  amount: number;
   edited: boolean;
   onChange: (i: number, v: number) => void;
   onReset: () => void;
@@ -537,6 +606,9 @@ function AllocationEditor({
               />
               <span className="text-sm text-muted">%</span>
             </div>
+            <span className="num w-20 shrink-0 text-right text-xs text-ink">
+              {fmtUsd((amount * (weights[i] ?? 0)) / 100)}
+            </span>
             <span className="num hidden w-16 shrink-0 text-right text-xs text-muted sm:inline">
               {(a.apyBps / 100).toFixed(2)}% APY
             </span>
@@ -547,7 +619,15 @@ function AllocationEditor({
   );
 }
 
-function AllocationExplain({ a, weight }: { a: Allocation; weight?: number }) {
+function AllocationExplain({
+  a,
+  weight,
+  dollars,
+}: {
+  a: Allocation;
+  weight?: number;
+  dollars?: number;
+}) {
   const w = weight ?? a.weightPct;
   return (
     <div className="surface-card p-5">
@@ -558,6 +638,11 @@ function AllocationExplain({ a, weight }: { a: Allocation; weight?: number }) {
           <span className="ml-2 text-sm font-normal text-muted">· {a.chain}</span>
         </div>
         <div className="text-sm text-muted">
+          {dollars !== undefined && (
+            <>
+              <span className="num text-ink">{fmtUsd(dollars)}</span> ·{" "}
+            </>
+          )}
           <span className="num text-ink">{w}%</span> weight ·{" "}
           <span className="num text-ink">{(a.apyBps / 100).toFixed(2)}%</span> APY ·{" "}
           <span className="uppercase">{a.exposure}</span> · risk{" "}

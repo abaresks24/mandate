@@ -536,15 +536,7 @@
   color: var(--cream);
   opacity: 0.72;
   margin-bottom: 18px;
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-}
-.sc__kicker::before {
-  content: "";
-  width: 28px;
-  height: 1px;
-  background: rgba(243, 233, 221, 0.45);
+  display: inline-block;
 }
 .sc__h2 {
   font-family: var(--font-serif);
