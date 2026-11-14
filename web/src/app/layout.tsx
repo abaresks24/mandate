@@ -5,12 +5,12 @@ import { Toaster } from "sonner";
 import { WalletProvider } from "@/components/wallet/WalletProvider";
 
 export const metadata: Metadata = {
-  title: "YieldAI — agent-managed yield, bounded on-chain",
+  title: "YieldAI: agent-managed yield, bounded on-chain",
   description:
     "An AI agent earns yield inside limits you set on-chain. The contract rejects anything out of bounds, and cross-chain facts are verified by a bonded guardian committee.",
   metadataBase: new URL("https://mandate.example"),
   openGraph: {
-    title: "YieldAI — agent-managed yield, bounded on-chain",
+    title: "YieldAI: agent-managed yield, bounded on-chain",
     description:
       "An AI agent earns yield inside on-chain limits. The contract enforces the rules; a bonded committee verifies cross-chain facts.",
     siteName: "YieldAI",
@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "YieldAI — agent-managed yield, bounded on-chain",
+    title: "YieldAI: agent-managed yield, bounded on-chain",
     description:
       "An AI agent earns yield inside limits you set on-chain, verified by a bonded guardian committee.",
   },
