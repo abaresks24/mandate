@@ -299,15 +299,31 @@ function ProposalView(props: {
     },
   };
 
+  // Rebalance so the weights ALWAYS sum to 100: moving one slider takes the delta
+  // from (or gives it to) the others, in proportion to their current weights.
   const setWeight = (i: number, v: number) =>
-    setWeights((w) => w.map((x, j) => (j === i ? Math.max(0, Math.min(100, Math.round(v))) : x)));
-  const normalize = () =>
     setWeights((w) => {
-      const t = w.reduce((x, y) => x + y, 0) || 1;
-      const scaled = w.map((x) => Math.round((x / t) * 100));
-      const drift = 100 - scaled.reduce((x, y) => x + y, 0);
-      if (scaled.length) scaled[0] += drift;
-      return scaled;
+      const n = w.length;
+      if (n === 1) return [100];
+      const target = Math.max(0, Math.min(100, Math.round(v)));
+      const rest = 100 - target; // what the other allocations must now sum to
+      const othersSum = w.reduce((s, x, j) => (j === i ? s : s + x), 0);
+      const next = w.slice();
+      next[i] = target;
+      const otherIdx = w.map((_, j) => j).filter((j) => j !== i);
+      const last = otherIdx[otherIdx.length - 1]!;
+      let assigned = 0;
+      for (const j of otherIdx) {
+        if (j === last) {
+          next[j] = rest - assigned; // absorb rounding so the total is exactly 100
+        } else {
+          const base = othersSum > 0 ? w[j]! / othersSum : 1 / otherIdx.length;
+          next[j] = Math.max(0, Math.round(base * rest));
+          assigned += next[j]!;
+        }
+      }
+      if (next[last]! < 0) next[last] = 0; // guard against rounding overshoot
+      return next;
     });
   const reset = () => setWeights(original);
 
@@ -368,7 +384,6 @@ function ProposalView(props: {
           total={total}
           edited={edited}
           onChange={setWeight}
-          onNormalize={normalize}
           onReset={reset}
         />
 
@@ -448,7 +463,6 @@ function AllocationEditor({
   total,
   edited,
   onChange,
-  onNormalize,
   onReset,
 }: {
   allocations: Allocation[];
@@ -456,21 +470,14 @@ function AllocationEditor({
   total: number;
   edited: boolean;
   onChange: (i: number, v: number) => void;
-  onNormalize: () => void;
   onReset: () => void;
 }) {
-  const off = total !== 100;
   return (
     <div className="mt-8 border-t border-hairline pt-8">
       <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
         <div className="label">Customize allocation</div>
         <div className="flex items-center gap-4 text-sm">
-          <span className={`num ${off ? "text-warn" : "text-muted"}`}>Total {total}%</span>
-          {off && (
-            <button type="button" onClick={onNormalize} className="focusable text-near hover:underline">
-              Normalize to 100%
-            </button>
-          )}
+          <span className="num text-muted">Total {total}%</span>
           {edited && (
             <button type="button" onClick={onReset} className="focusable text-muted hover:text-ink">
               Reset
@@ -479,8 +486,9 @@ function AllocationEditor({
         </div>
       </div>
       <p className="mb-4 text-xs leading-relaxed text-muted">
-        Drag or type to rebalance. The blended APY, risk and every chart below update
-        live. Normalize rescales the weights to 100%.
+        Drag or type to rebalance. The weights always sum to 100%, so moving one
+        allocation adjusts the others. The blended APY, risk and every chart below
+        update live.
       </p>
       <div className="flex flex-col gap-3">
         {allocations.map((a, i) => (
