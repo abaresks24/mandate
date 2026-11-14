@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 
 // =============================================================================
-// YieldAI — landing (scrollytelling, Sagittaire-reskin).
+// YieldAI, landing (scrollytelling, Sagittaire-reskin).
 // A tall intro stage (~220vh) with a sticky 100vh hero drives a scroll
 // choreography: as the user scrolls DOWN the hero rises UP and fades, revealing
 // the protocol story beneath it. Scroll is driven in JS via a rAF-throttled
@@ -113,7 +113,6 @@ export default function Home() {
               </p>
             </div>
           </div>
-          <div className="sc__scrollcue">Scroll</div>
         </div>
       </div>
 
@@ -152,7 +151,7 @@ export default function Home() {
               <p className="sc__body">
                 You set the allowed protocols, a risk ceiling, a maximum loss and
                 a daily spend limit. They live in a contract. Any action outside
-                them is <strong>rejected on-chain, before it runs</strong> — not
+                them is <strong>rejected on-chain, before it runs</strong>, not
                 caught after the money has moved.
               </p>
             </div>

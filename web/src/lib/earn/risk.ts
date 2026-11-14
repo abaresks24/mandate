@@ -1,7 +1,7 @@
-// Deterministic risk-scoring module — ported verbatim from agent/src/risk.ts.
+// Deterministic risk-scoring module, ported verbatim from agent/src/risk.ts.
 //
 // CONTRACT: this is a PURE function. The LLM must NEVER compute or influence
-// the score — it only explains the number this module produces. Same inputs
+// the score, it only explains the number this module produces. Same inputs
 // always yield the same score (deterministic), and the score is MONOTONIC in
 // each input (more audits / more TVL / more age never increases risk; more
 // exploits / oracle dependency / riskier yield source never decreases it).
@@ -13,7 +13,7 @@ export type YieldSource =
   | "lp" // providing liquidity to an AMM pool
   | "staking" // native/liquid staking
   | "derivatives" // perps / structured / delta-neutral
-  | "algorithmic"; // algorithmic/rebasing — highest intrinsic risk
+  | "algorithmic"; // algorithmic/rebasing, highest intrinsic risk
 
 export interface ProtocolRiskInput {
   name: string;

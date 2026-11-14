@@ -308,13 +308,13 @@ function ProposalView(props: {
           </p>
         )}
 
-        {/* Breakdown — donuts */}
+        {/* Breakdown, donuts */}
         <div className="mt-8 grid gap-8 border-t border-hairline pt-8 sm:grid-cols-2">
           <Donut title="Allocation by protocol" slices={protocolSlices} />
           <Donut title="Exposure by asset" slices={assetSlices} />
         </div>
 
-        {/* Yield — per-allocation APY + projected growth */}
+        {/* Yield, per-allocation APY + projected growth */}
         <div className="mt-10 grid gap-8 border-t border-hairline pt-8 lg:grid-cols-2">
           <ApyBars
             items={s.allocations.map((a) => ({
@@ -590,7 +590,7 @@ function LaunchPanel({ strategy }: { strategy: ProposedStrategy }) {
       // Wallet-selector surfaces user rejection as an Error; show it plainly.
       const raw = err instanceof Error ? err.message : String(err);
       const message = /reject|cancel|denied/i.test(raw)
-        ? "Transaction rejected in your wallet — nothing was registered."
+        ? "Transaction rejected in your wallet, nothing was registered."
         : `Could not register the mandate: ${raw}`;
       setState({ phase: "error", message });
     }
@@ -601,8 +601,8 @@ function LaunchPanel({ strategy }: { strategy: ProposedStrategy }) {
       <h3 className="label">Launch this strategy</h3>
 
       <p className="mt-4 max-w-2xl text-sm leading-relaxed text-ink">
-        Launching registers an <span className="font-medium">on-chain mandate</span> — the rules
-        the vault enforces — with a real, wallet-signed transaction. The agent can only ever
+        Launching registers an <span className="font-medium">on-chain mandate</span>, the rules
+        the vault enforces, with a real, wallet-signed transaction. The agent can only ever
         propose moves inside it; anything outside the mandate is rejected on-chain, before it
         can run.
       </p>
@@ -632,7 +632,7 @@ function LaunchPanel({ strategy }: { strategy: ProposedStrategy }) {
           <Step
             n={2}
             title="Guardian committee verifies"
-            body="A bond-weighted committee checks each cross-chain move. The bond is the insurance — quorum bond exceeds the value at risk."
+            body="A bond-weighted committee checks each cross-chain move. The bond is the insurance, quorum bond exceeds the value at risk."
           />
           <Arrow />
           <Step
@@ -667,7 +667,7 @@ function LaunchPanel({ strategy }: { strategy: ProposedStrategy }) {
         </a>
       </div>
 
-      {/* CTA — REAL wallet-signed on-chain registration */}
+      {/* CTA, REAL wallet-signed on-chain registration */}
       <div className="mt-8 flex flex-col gap-3 border-t border-hairline pt-6">
         {!accountId ? (
           <>

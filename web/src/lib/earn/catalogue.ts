@@ -1,12 +1,12 @@
 // The YieldAI strategy universe. Risk facts here feed the DETERMINISTIC risk
-// module — the LLM never sees or sets a score, it only picks from this menu and
+// module, the LLM never sees or sets a score, it only picks from this menu and
 // explains the number the module produces.
 //
 // Honesty: `live: true` entries (Rhea on NEAR, Morpho on Ethereum) are what the
 // vault executes on testnet today (NEAR-native + Chain Signatures). The rest are
 // the broader universe the agent allocates across; their on-chain execution is
 // on the roadmap. The proposer surfaces this distinction in a caveat when a
-// non-live venue is used — it never pretends a roadmap venue is already settling.
+// non-live venue is used, it never pretends a roadmap venue is already settling.
 
 import type { ProtocolRiskInput } from "./risk";
 
@@ -42,7 +42,7 @@ export const CATALOGUE: Record<string, ProtocolCatalogueEntry> = {
     market: "ref-finance-101.testnet", token: "usdc", live: true,
     risk: { name: "rhea", audits: 3, tvl_usd: 120_000_000, age_days: 900, exploit_history: 0, oracle_dependency: false, yield_source: "lending" },
     sourceOfYield: "Borrowers pay variable interest on a USDC money market on NEAR. Your USDC is lent out; their interest is your yield. No price-oracle dependency.",
-    mechanics: "Live on testnet. Supplied natively on NEAR from the vault's own account — no bridge.",
+    mechanics: "Live on testnet. Supplied natively on NEAR from the vault's own account, no bridge.",
   }),
   "morpho-sepolia": e({
     key: "morpho-sepolia", displayName: "Morpho", chain: "ethereum-sepolia", chainLabel: "Ethereum",
@@ -50,7 +50,7 @@ export const CATALOGUE: Record<string, ProtocolCatalogueEntry> = {
     market: "0x0000000000000000000000000000000000000000", token: "usdc", live: true,
     risk: { name: "morpho-sepolia", audits: 4, tvl_usd: 800_000_000, age_days: 700, exploit_history: 0, oracle_dependency: true, yield_source: "lending" },
     sourceOfYield: "USDC supplied to an isolated Morpho lending market on Ethereum; borrowers pay interest. Higher yield, but depends on an external price oracle (an extra risk factor).",
-    mechanics: "Live on testnet. Executed cross-chain from NEAR: the vault signs the Ethereum tx via Chain Signatures (MPC) — no bridge, no wrapped key.",
+    mechanics: "Live on testnet. Executed cross-chain from NEAR: the vault signs the Ethereum tx via Chain Signatures (MPC), no bridge, no wrapped key.",
   }),
   aave: e({
     key: "aave", displayName: "Aave v3", chain: "ethereum", chainLabel: "Ethereum",
@@ -65,7 +65,7 @@ export const CATALOGUE: Record<string, ProtocolCatalogueEntry> = {
     asset: "stablecoin", category: "USDC lending", default_apy_bps: 600,
     market: "aave-v3-base-usdc", token: "usdc", live: false,
     risk: { name: "aave-base", audits: 5, tvl_usd: 1_500_000_000, age_days: 500, exploit_history: 0, oracle_dependency: true, yield_source: "lending" },
-    sourceOfYield: "Aave v3 on Base — same mechanics as mainnet, often a slightly higher USDC rate thanks to L2 incentives.",
+    sourceOfYield: "Aave v3 on Base, same mechanics as mainnet, often a slightly higher USDC rate thanks to L2 incentives.",
     mechanics: "Cross-chain supply to Base via Chain Signatures (roadmap venue).",
   }),
   fluid: e({
@@ -77,18 +77,18 @@ export const CATALOGUE: Record<string, ProtocolCatalogueEntry> = {
     mechanics: "Cross-chain supply via Chain Signatures (roadmap venue).",
   }),
 
-  // ─── Stablecoin — RWA / fixed / savings (low–moderate) ───
+  // ─── Stablecoin, RWA / fixed / savings (low-moderate) ───
   sdai: e({
     key: "sdai", displayName: "Sky Savings", chain: "ethereum", chainLabel: "Ethereum",
     asset: "stablecoin", category: "savings rate", default_apy_bps: 700,
     market: "sdai", token: "dai", live: false,
     risk: { name: "sdai", audits: 5, tvl_usd: 2_000_000_000, age_days: 1200, exploit_history: 0, oracle_dependency: false, yield_source: "lending" },
-    sourceOfYield: "The Sky (ex-MakerDAO) savings rate — yield paid from protocol fees and RWA/T-bill backing. No oracle, no borrower risk.",
+    sourceOfYield: "The Sky (ex-MakerDAO) savings rate, yield paid from protocol fees and RWA/T-bill backing. No oracle, no borrower risk.",
     mechanics: "Deposit into the savings module (roadmap venue).",
   }),
   "ondo-usdy": e({
     key: "ondo-usdy", displayName: "Ondo USDY", chain: "ethereum", chainLabel: "Ethereum",
-    asset: "stablecoin", category: "RWA — T-bills", default_apy_bps: 480,
+    asset: "stablecoin", category: "RWA, T-bills", default_apy_bps: 480,
     market: "usdy", token: "usdy", live: false,
     risk: { name: "ondo-usdy", audits: 3, tvl_usd: 600_000_000, age_days: 500, exploit_history: 0, oracle_dependency: false, yield_source: "lending" },
     sourceOfYield: "A tokenized note backed by short-term US Treasuries + bank deposits. Yield is the T-bill rate. Off-chain custody is the trade-off (RWA counterparty risk).",
@@ -99,7 +99,7 @@ export const CATALOGUE: Record<string, ProtocolCatalogueEntry> = {
     asset: "stablecoin", category: "fixed-rate", default_apy_bps: 1100,
     market: "pendle-pt-usdc", token: "usdc", live: false,
     risk: { name: "pendle", audits: 4, tvl_usd: 3_000_000_000, age_days: 900, exploit_history: 0, oracle_dependency: true, yield_source: "derivatives" },
-    sourceOfYield: "Buy a Principal Token to LOCK a fixed USDC yield to maturity — you sell the variable part for a known rate. Rate risk if you exit early.",
+    sourceOfYield: "Buy a Principal Token to LOCK a fixed USDC yield to maturity, you sell the variable part for a known rate. Rate risk if you exit early.",
     mechanics: "Buy PT on Pendle, hold to maturity (roadmap venue).",
   }),
   "ethena-susde": e({
@@ -117,7 +117,7 @@ export const CATALOGUE: Record<string, ProtocolCatalogueEntry> = {
     asset: "near", category: "liquid staking", default_apy_bps: 850,
     market: "linear-protocol.near", token: "near", live: false,
     risk: { name: "linear", audits: 2, tvl_usd: 90_000_000, age_days: 800, exploit_history: 0, oracle_dependency: false, yield_source: "staking" },
-    sourceOfYield: "Liquid-stake NEAR for stNEAR: earn NEAR validator rewards and stay liquid. Yield is in NEAR — so you take NEAR price exposure.",
+    sourceOfYield: "Liquid-stake NEAR for stNEAR: earn NEAR validator rewards and stay liquid. Yield is in NEAR, so you take NEAR price exposure.",
     mechanics: "Stake via the liquid-staking contract on NEAR (roadmap venue).",
   }),
   "meta-pool": e({
@@ -133,17 +133,17 @@ export const CATALOGUE: Record<string, ProtocolCatalogueEntry> = {
     asset: "eth", category: "liquid staking", default_apy_bps: 340,
     market: "steth", token: "eth", live: false,
     risk: { name: "lido-steth", audits: 5, tvl_usd: 25_000_000_000, age_days: 1500, exploit_history: 0, oracle_dependency: false, yield_source: "staking" },
-    sourceOfYield: "Liquid-stake ETH for stETH — Ethereum validator rewards. The yield (and principal) is in ETH, so you hold ETH price exposure.",
+    sourceOfYield: "Liquid-stake ETH for stETH, Ethereum validator rewards. The yield (and principal) is in ETH, so you hold ETH price exposure.",
     mechanics: "Stake via Lido (roadmap venue).",
   }),
 
-  // ─── BTC yield (BTC exposure; moderate–elevated) ───
+  // ─── BTC yield (BTC exposure; moderate-elevated) ───
   "lombard-lbtc": e({
     key: "lombard-lbtc", displayName: "Lombard LBTC", chain: "ethereum", chainLabel: "Ethereum",
     asset: "btc", category: "BTC staking", default_apy_bps: 420,
     market: "lbtc", token: "btc", live: false,
     risk: { name: "lombard-lbtc", audits: 3, tvl_usd: 1_500_000_000, age_days: 300, exploit_history: 0, oracle_dependency: true, yield_source: "staking" },
-    sourceOfYield: "Liquid-staked BTC (via Babylon) — real BTC exposure that also earns a staking yield. Yield and principal are in BTC.",
+    sourceOfYield: "Liquid-staked BTC (via Babylon), real BTC exposure that also earns a staking yield. Yield and principal are in BTC.",
     mechanics: "Hold LBTC (roadmap venue). Gives genuine BTC exposure.",
   }),
   "solv-btc": e({
@@ -169,7 +169,7 @@ export const CATALOGUE: Record<string, ProtocolCatalogueEntry> = {
     asset: "basket", category: "concentrated LP", default_apy_bps: 1600,
     market: "univ3-eth-usdc", token: "lp", live: false,
     risk: { name: "uni-ethusdc", audits: 5, tvl_usd: 4_000_000_000, age_days: 1300, exploit_history: 0, oracle_dependency: false, yield_source: "lp" },
-    sourceOfYield: "Concentrated ETH-USDC liquidity — fees are high but impermanent loss and range management make returns volatile.",
+    sourceOfYield: "Concentrated ETH-USDC liquidity, fees are high but impermanent loss and range management make returns volatile.",
     mechanics: "Provide a concentrated range on Uniswap v3 (roadmap venue).",
   }),
 
@@ -179,7 +179,7 @@ export const CATALOGUE: Record<string, ProtocolCatalogueEntry> = {
     asset: "eth", category: "restaking", default_apy_bps: 900,
     market: "eigen-restake", token: "eth", live: false,
     risk: { name: "eigenlayer", audits: 3, tvl_usd: 11_000_000_000, age_days: 420, exploit_history: 0, oracle_dependency: false, yield_source: "derivatives" },
-    sourceOfYield: "Restake ETH to secure additional services (AVSs) on top of staking rewards. Extra yield, extra slashing surface — a newer, riskier primitive.",
+    sourceOfYield: "Restake ETH to secure additional services (AVSs) on top of staking rewards. Extra yield, extra slashing surface, a newer, riskier primitive.",
     mechanics: "Restake stETH into EigenLayer (roadmap venue).",
   }),
 };

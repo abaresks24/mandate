@@ -12,7 +12,7 @@ import type { Mandate, PositionsLive, Position, Tally } from "@/lib/types";
 
 // The showcased portfolio is the on-chain demo vault. These views are read
 // live; on any failure useLive falls back to the mock shape and reports it.
-// Positions are expected to be EMPTY on-chain (idle vault) — we never
+// Positions are expected to be EMPTY on-chain (idle vault), we never
 // fabricate a position, we show an honest empty state instead.
 
 const EMPTY_POSITIONS: PositionsLive = {
@@ -79,7 +79,7 @@ export default function Portfolio() {
       <header>
         <h1 className="page-h1">Portfolio</h1>
         <p className="page-lede">
-          The live state of the showcased vault — its value, the mandate that
+          The live state of the showcased vault, its value, the mandate that
           bounds it, and every action the guardian committee has verified.
         </p>
 
@@ -91,7 +91,7 @@ export default function Portfolio() {
               .{" "}
               {ownRecord
                 ? "Your registered mandate is shown below, above the demo vault."
-                : "No mandate registered under this account yet — showing the demo vault."}
+                : "No mandate registered under this account yet, showing the demo vault."}
             </span>
           ) : (
             <span>
@@ -103,13 +103,13 @@ export default function Portfolio() {
               >
                 Connect a wallet
               </button>{" "}
-              to see your account — this page works either way.
+              to see your account, this page works either way.
             </span>
           )}
         </div>
       </header>
 
-      {/* Your strategy — the connected user's OWN on-chain mandate */}
+      {/* Your strategy, the connected user's OWN on-chain mandate */}
       {ownRecord && (
         <section>
           <h2 className="section-h2 mb-4">Your strategy</h2>
@@ -121,7 +121,7 @@ export default function Portfolio() {
       <div className={ownRecord ? "border-t border-hairline pt-10" : undefined}>
         <h2 className="section-h2">Demo vault</h2>
         <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">
-          The live state of the showcased vault — its value, the mandate that
+          The live state of the showcased vault, its value, the mandate that
           bounds it, and every action the guardian committee has verified.
         </p>
       </div>
@@ -168,13 +168,13 @@ export default function Portfolio() {
         <h2 className="section-h2">Mandate</h2>
         <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">
           The rules the vault enforces on-chain. The agent can only ever propose
-          moves inside these bounds — anything outside is rejected before it can
+          moves inside these bounds, anything outside is rejected before it can
           run.
         </p>
         <MandateSummary mandate={m} loading={mandate.loading} />
       </section>
 
-      {/* Activity feed — real on-chain proofs framed as portfolio activity */}
+      {/* Activity feed, real on-chain proofs framed as portfolio activity */}
       <section>
         <h2 className="section-h2">Activity</h2>
         <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">
@@ -195,17 +195,17 @@ function YourStrategy({ record }: { record: MandateRecord }) {
     parsed = {};
   }
   const apy =
-    typeof parsed.target_apy_bps === "number" ? bps(parsed.target_apy_bps) : "—";
-  const protocols = (parsed.allowed_protocols ?? []).join(", ") || "—";
+    typeof parsed.target_apy_bps === "number" ? bps(parsed.target_apy_bps) : ", ";
+  const protocols = (parsed.allowed_protocols ?? []).join(", ") || ", ";
   const chains = (parsed.allowed_chains ?? [])
     .map((c) => chainLabel(c))
-    .join(", ") || "—";
+    .join(", ") || ", ";
   const maxRisk =
-    typeof parsed.max_risk_score === "number" ? `${parsed.max_risk_score}/100` : "—";
+    typeof parsed.max_risk_score === "number" ? `${parsed.max_risk_score}/100` : ", ";
   const when =
     record.registered_at_ns > 0
       ? new Date(record.registered_at_ns / 1e6).toLocaleString()
-      : "—";
+      : ", ";
 
   return (
     <div className="surface-card">
@@ -214,7 +214,7 @@ function YourStrategy({ record }: { record: MandateRecord }) {
         <div className="mt-1 text-sm text-muted">
           Registered on-chain under{" "}
           <span className="num text-ink">{truncateAccount(record.owner)}</span>
-          {when !== "—" ? ` · ${when}` : ""}
+          {when !== ", " ? ` · ${when}` : ""}
         </div>
       </div>
       <div className="grid grid-cols-2 gap-px bg-hairline sm:grid-cols-4">
@@ -287,7 +287,7 @@ function EmptyPositions({ idle, live }: { idle: string; live: boolean }) {
       <p className="text-base font-medium text-ink">No active positions yet</p>
       <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted">
         {live
-          ? "The vault is live on testnet and currently idle — no capital has been allocated into a strategy yet."
+          ? "The vault is live on testnet and currently idle, no capital has been allocated into a strategy yet."
           : "The vault has no open positions."}
         {idleN > 0 && (
           <>
@@ -333,7 +333,7 @@ function PositionsTable({
             const share =
               totalN > 0
                 ? `${((Number(p.amount_usdc) / totalN) * 100).toFixed(1)}%`
-                : "—";
+                : ", ";
             return (
               <tr key={`${p.protocol}-${p.chain}-${i}`}>
                 <td className="font-medium text-ink">
@@ -372,7 +372,7 @@ function MandateSummary({
 
   const killSwitch =
     mandate.committee_threshold_usdc === "0"
-      ? "Permanent committee — every move is verified."
+      ? "Permanent committee, every move is verified."
       : `Committee engages above ${usdc(mandate.committee_threshold_usdc)}.`;
 
   return (
@@ -381,11 +381,11 @@ function MandateSummary({
       <dl className="grid grid-cols-1 gap-x-10 gap-y-2 text-sm sm:grid-cols-2">
         <MandateRow
           label="Allowed protocols"
-          value={mandate.allowed_protocols.join(", ") || "—"}
+          value={mandate.allowed_protocols.join(", ") || ", "}
         />
         <MandateRow
           label="Allowed chains"
-          value={mandate.allowed_chains.map(chainLabel).join(", ") || "—"}
+          value={mandate.allowed_chains.map(chainLabel).join(", ") || ", "}
         />
         <MandateRow label="Max risk score" value={`${mandate.max_risk_score}/100`} />
         <MandateRow label="Max loss" value={bps(mandate.max_loss_bps)} />

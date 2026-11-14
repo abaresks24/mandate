@@ -3,7 +3,7 @@
 // The LLM composes a strategy from a LIVE market universe (real markets from
 // DefiLlama across Morpho, Aave, Euler, Fluid, Compound, Spark + savings / RWA /
 // staking / BTC / LP / restaking venues). The DETERMINISTIC risk module computes
-// every risk score here — the LLM only explains it. Unrealistic/contradictory
+// every risk score here, the LLM only explains it. Unrealistic/contradictory
 // briefs are REFUSED with a structured reason.
 
 import { buildShortlist, type Venue } from "./universe";
@@ -34,7 +34,7 @@ export interface Allocation {
   chain: string; // human chain label
   weightPct: number; // 0..100
   sourceOfYield: string;
-  riskScore: number; // 0..100 — DETERMINISTIC
+  riskScore: number; // 0..100, DETERMINISTIC
   riskLabel: string;
   explanation: string; // LLM-authored, grounded on the deterministic score
   mechanics: string;
@@ -86,15 +86,15 @@ interface LlmProposal {
 
 // Hard, non-LLM guardrails. These run REGARDLESS of what the LLM returns, so a
 // jailbroken or over-eager model cannot talk the product into an impossible promise.
-const MAX_REALISTIC_APY_BPS = 2500; // 25% — above this at LOW risk is a scam signal
-const ABSOLUTE_MAX_APY_BPS = 8000; // 80% — above this at ANY risk is simply not achievable
+const MAX_REALISTIC_APY_BPS = 2500; // 25%, above this at LOW risk is a scam signal
+const ABSOLUTE_MAX_APY_BPS = 8000; // 80%, above this at ANY risk is simply not achievable
 const LOW_RISK_CAP = 25;
 
-// What YieldAI actually does — reused in every "that's not possible" message so the
+// What YieldAI actually does, reused in every "that's not possible" message so the
 // refusal teaches instead of just saying no.
 const WHAT_IT_DOES =
   "YieldAI puts the capital you deposit to work in real on-chain yield markets. It " +
-  "grows a deposit at prevailing market rates — it does not create principal, multiply " +
+  "grows a deposit at prevailing market rates, it does not create principal, multiply " +
   "your money on demand, or guarantee a fixed future amount.";
 
 /**
@@ -103,7 +103,7 @@ const WHAT_IT_DOES =
  * to HOLD millions of units of a crypto asset ("2M BTC", "2 million bitcoin"). This is
  * a deterministic backstop; the LLM is instructed to refuse these too, but this layer
  * cannot be argued with. Kept conservative so a legitimate deposit ("invest 2M in
- * stablecoins") is NOT refused — amount alone is never the trigger.
+ * stablecoins") is NOT refused, amount alone is never the trigger.
  */
 export function detectUnachievableGoal(brief: string): { reason: string } | null {
   const t = ` ${brief.toLowerCase()} `;
@@ -118,16 +118,33 @@ export function detectUnachievableGoal(brief: string): { reason: string } | null
     /\b(multiply|multipli\w+)\b[\s\S]{0,20}\b(money|capital|funds?|deposit|invest\w*)\b/.test(t);
 
   // Holding millions/billions of UNITS of a VOLATILE asset ("2M BTC", "2 million eth").
-  // Stablecoins are excluded — "2M USDC" is just a $2M deposit, a normal principal.
+  // Stablecoins are excluded, "2M USDC" is just a $2M deposit, a normal principal.
   const assetUnitsInMillions =
     /\b\d[\d.,]*\s?(m|mm|bn|b)\b[\s\S]{0,6}\b(btc|bitcoin|eth|ether|sol|near)\b/.test(t) ||
     /\b(million|millions|billion|billions|milliard\w*)\b[\s\S]{0,6}\b(btc|bitcoin|eth|ether|sol|near)\b/.test(t);
 
-  if (multiplier || assetUnitsInMillions) {
+  // Acquisition goals: wanting to END UP WITH a quantity of a volatile asset, or any
+  // target with a get-rich-quick urgency. "I want 10 btc fast" is not a deposit to put
+  // to work, it's an amount to magically acquire. A hold/deposit cue ("I have 10 btc",
+  // "invest 5 btc") flips these back to legitimate, so a real deposit is never refused.
+  const acquire =
+    /\b(i\s*want|i\s*need|i\s*wanna|gimme|give\s*me|make\s*me|get\s*me|want\s*to\s*(get|have|make|reach|hit|own|be))\b/.test(t);
+  const urgency =
+    /\b(fast|quick|quickly|asap|overnight|tonight|instantly|instant|in\s+(a|an|one|two|three|\d+)\s+(day|days|week|weeks|hour|hours|month|months)|by\s+(tomorrow|tonight|next\s+week|friday|monday|the\s+weekend))\b/.test(t);
+  const amountOfAsset = /\b\d[\d.,]*\s*(btc|bitcoin|eth|ether|sol|near)\b/.test(t);
+  const moneyAmount =
+    /[€$£]\s?\d|\b\d[\d.,]*\s*(k|grand|million|millions|billion|dollars?|euros?|usd)\b/.test(t);
+  const holdCue =
+    /\b(i\s*have|i\s*hold|i\s*own|i've|my|mon|ma|mes|j'?ai|j\s+ai|deposit\w*|invest\w*|put|stake|staking|holding|got)\b/.test(t);
+
+  const acquireAmount = acquire && amountOfAsset && !holdCue; // "I want 10 btc"
+  const fastGain = urgency && (amountOfAsset || moneyAmount); // "10 btc fast", "$1k overnight"
+
+  if (multiplier || assetUnitsInMillions || acquireAmount || fastGain) {
     return {
       reason:
         `${WHAT_IT_DOES} There is no strategy that turns a deposit into a target like ` +
-        `this, multiplies your capital on demand, or makes you rich quickly — anything ` +
+        `this, multiplies your capital on demand, or makes you rich quickly, anything ` +
         `promising that is a scam. Tell me how much you want to deposit and your risk ` +
         `appetite, and I'll show you the realistic yield on it.`,
     };
@@ -144,7 +161,7 @@ function venueBrief(venues: Venues): string {
     .sort((a, b) => b.tvlUsd - a.tvlUsd)
     .map((v) => {
       const tag = v.live ? "LIVE" : "roadmap";
-      return `- "${v.slug}" — ${v.displayName} · ${v.market} · ${v.chainLabel} · ${v.category} · exposure:${v.asset} · ${(v.apyBps / 100).toFixed(1)}% APY · TVL ${tvlShort(v.tvlUsd)} · ${tag}`;
+      return `- "${v.slug}", ${v.displayName} · ${v.market} · ${v.chainLabel} · ${v.category} · exposure:${v.asset} · ${(v.apyBps / 100).toFixed(1)}% APY · TVL ${tvlShort(v.tvlUsd)} · ${tag}`;
     })
     .join("\n");
 }
@@ -159,15 +176,15 @@ function systemPrompt(venues: Venues, allowed: string[] | null): string {
   const lockLine = allowed
     ? [
         "",
-        `HARD CONSTRAINT — EXPOSURE SET: the user wants exposure to ${assetLabels(allowed)}.`,
+        `HARD CONSTRAINT, EXPOSURE SET: the user wants exposure to ${assetLabels(allowed)}.`,
         `EVERY allocation MUST be denominated in one of: ${allowed.join(", ")}. Pick ONLY from`,
         `the venues below (already filtered to this set). NEVER introduce any other asset.`,
         allowed.length > 1
-          ? `This is a DELIBERATE MIX, not a contradiction — split the capital across these ` +
+          ? `This is a DELIBERATE MIX, not a contradiction, split the capital across these ` +
             `assets, honoring any proportions the brief gives (e.g. "~30% BTC" => ~30% weight ` +
             `in BTC venues, the rest in the other asset). Do NOT refuse it.`
           : `Earning yield on ${assetLabels(allowed)} means staying ${assetLabels(allowed)}-` +
-            `denominated — never swap it away to chase a rate.`,
+            `denominated, never swap it away to chase a rate.`,
         "",
       ]
     : [];
@@ -179,9 +196,13 @@ function systemPrompt(venues: Venues, allowed: string[] | null): string {
     "ALWAYS respond in ENGLISH. Every text field (summary, each allocation",
     "explanation, caveat, refusal_reason) MUST be in English, even if the brief is",
     "in another language.",
+    "",
+    "STYLE: write plainly, like a human analyst. Short declarative sentences. Do NOT",
+    "use em-dashes or en-dashes (— –); use a comma, period, or colon instead. Avoid",
+    "marketing phrasing and filler.",
     ...lockLine,
     "",
-    "You do NOT compute risk scores — a separate deterministic module does that.",
+    "You do NOT compute risk scores, a separate deterministic module does that.",
     "Your job: read the brief, then DESIGN A STRATEGY by picking a handful of",
     "markets from the LIVE universe below, assigning each a weight %, and writing an",
     "honest explanation. Use the EXACT slug key (the quoted string) for each pick.",
@@ -198,17 +219,17 @@ function systemPrompt(venues: Venues, allowed: string[] | null): string {
     "  ETH staking/restaking; NEAR → NEAR venues; 'no volatility' → stablecoin only.",
     "  CRITICAL: if the user already holds an asset and wants yield ON it, EVERY",
     "  allocation must KEEP that exposure (exposure tag == their asset). Earning yield",
-    "  on BTC means staying in BTC-denominated venues — never swap BTC into ETH or",
+    "  on BTC means staying in BTC-denominated venues, never swap BTC into ETH or",
     "  stablecoins to chase a rate; that would drop the exposure they asked to keep.",
     "- You may pick SEVERAL markets from the same protocol (e.g. two Morpho markets)",
     "  when it fits. Typically 2-5 markets across categories. Vary the mix per brief.",
     "",
     "HONESTY: only venues marked LIVE settle on testnet today (Rhea on NEAR, Morpho",
-    "on Ethereum). You MAY include roadmap venues when they fit — if you do, say so",
+    "on Ethereum). You MAY include roadmap venues when they fit, if you do, say so",
     "plainly in `caveat`. Never claim a roadmap venue is already executing.",
     "",
     "REFUSE (set realistic=false and write refusal_reason) for briefs no yield strategy",
-    "can satisfy. Be honest and firm — do not flatter an impossible ask. Refuse when:",
+    "can satisfy. Be honest and firm, do not flatter an impossible ask. Refuse when:",
     "- the target return is unrealistic: anything above ~80% APY, or above ~25% APY while",
     "  also demanding low/zero risk (e.g. '1000% a year', '40% APY with no risk').",
     "- the brief is a get-rich-quick / multiplier goal: 'double my money', '10x', '100x',",
@@ -234,7 +255,7 @@ function systemPrompt(venues: Venues, allowed: string[] | null): string {
     '  "daily_cap_usdc": string (6-dp USDC integer),',
     '  "allocations": [ { "protocol": "<exact slug from the universe>", "weight_pct": number, "explanation": "<why this fits, honest>" } ],',
     '  "summary": string (1-2 sentences, plain English),',
-    '  "caveat": string (optional — honest note about live vs roadmap)',
+    '  "caveat": string (optional, honest note about live vs roadmap)',
     "}",
   ].join("\n");
 }
@@ -243,7 +264,7 @@ export function detectUnrealistic(
   targetApyBps: number,
   maxRiskScore: number,
 ): { reason: string } | null {
-  // Above the absolute ceiling, refuse at ANY risk level — no real on-chain market
+  // Above the absolute ceiling, refuse at ANY risk level, no real on-chain market
   // sustains this, so e.g. "1000% a year" is rejected even if risk tolerance is high.
   if (targetApyBps > ABSOLUTE_MAX_APY_BPS) {
     return {
@@ -251,7 +272,7 @@ export function detectUnrealistic(
         `A target of ${(targetApyBps / 100).toFixed(0)}% APY is not achievable on-chain. ` +
         `${WHAT_IT_DOES} The deepest real markets in its universe pay a small fraction of ` +
         `this; realistic stablecoin yields are low single digits, and even aggressive ` +
-        `strategies rarely clear a few tens of percent — with real risk of loss. Anything ` +
+        `strategies rarely clear a few tens of percent, with real risk of loss. Anything ` +
         `promising returns like this is a scam.`,
     };
   }
@@ -286,8 +307,7 @@ function assetLabels(assets: string[]): string {
  * (matching Venue.asset), or null when the brief doesn't pin any.
  *
  * - "yield on my BTC" -> ["btc"] (stay BTC-denominated, never rotate out).
- * - "USDC at 5% plus ~30% BTC exposure" -> ["stablecoin","btc"] (a deliberate mix —
- *   this must NOT be refused as a contradiction; both are allowed, LLM weights them).
+ * - "USDC at 5% plus ~30% BTC exposure" -> ["stablecoin","btc"] (a deliberate mix,  *   this must NOT be refused as a contradiction; both are allowed, LLM weights them).
  *
  * Conservative: requires BOTH an asset name AND a holding/yield cue, so an incidental
  * mention ("near zero risk") never pins exposure.
@@ -299,7 +319,7 @@ export function detectAllowedAssets(brief: string): string[] | null {
     { tag: "btc", re: /\b(btc|bitcoin|wbtc|lbtc|cbbtc|tbtc|sbtc)\b/ },
     { tag: "eth", re: /\b(eth|ether|ethereum|weth|steth|wsteth|reth|weeth|eeth)\b/ },
     { tag: "sol", re: /\b(sol|solana|msol|jitosol)\b/ },
-    // Bare "near" is a common English word — only match unambiguous forms.
+    // Bare "near" is a common English word, only match unambiguous forms.
     {
       tag: "near",
       re: /\b(stnear|linear)\b|\b(my|mon|ma|mes|des|du|stake|staking|hold|holding)\s+near\b|\bnear\s+(token|staking|exposure|position|holdings?)\b/,
@@ -310,14 +330,14 @@ export function detectAllowedAssets(brief: string): string[] | null {
   const found = Array.from(new Set(groups.filter((g) => g.re.test(t)).map((g) => g.tag)));
   if (found.length === 0) return null;
 
-  // A holding / "yield on" / "exposure to" cue — otherwise a passing mention shouldn't pin exposure.
+  // A holding / "yield on" / "exposure to" cue, otherwise a passing mention shouldn't pin exposure.
   const hasCue =
     /\b(i\s*(have|hold|own|'?ve|got)|i've|my|our|mon|ma|mes|j'?ai|j\s+ai|on\s+(my|some|the|this|it)|sur\s+(du|le|la|des|mon|ma|ce|mes)|rendement\s+sur|yield\s+on|earn\s+on|return\s+on|keep|stay|rester|garder|conserver|expos\w+|holding|stack|bag|denominated|envie|aimerai|veux|want)\b/.test(
       t,
     );
   if (!hasCue) return null;
 
-  // Every named asset is ALLOWED — a multi-asset brief is a deliberate mix, not a
+  // Every named asset is ALLOWED, a multi-asset brief is a deliberate mix, not a
   // contradiction. The LLM weights them (honoring any proportions in the brief).
   return found;
 }
@@ -333,9 +353,15 @@ function normalizeU128(v: string | undefined, fallback: string): string {
   return v.trim();
 }
 
+// Strip em/en dashes the model may still emit, so none reach the UI. A spaced
+// dash becomes a comma; a tight one becomes a hyphen (keeps ranges readable).
+function stripDashes(s: string): string {
+  return s.replace(/\s*—\s*/g, ", ").replace(/\s*–\s*/g, "-");
+}
+
 function sanitizeExplanation(llmText: string | undefined, displayName: string, risk: number): string {
   const base = `Deterministic risk score for ${displayName}: ${risk}/100.`;
-  const prose = (llmText ?? "").trim();
+  const prose = stripDashes((llmText ?? "").trim());
   return prose ? `${base} ${prose}` : base;
 }
 
@@ -346,7 +372,7 @@ export function assembleStrategy(
   allowed: string[] | null = null,
 ): ProposeResult {
   // Exposure set: if the user wants exposure to specific asset(s), every venue the
-  // strategy may touch must be denominated in one of them — no silent rotation.
+  // strategy may touch must be denominated in one of them, no silent rotation.
   if (allowed && allowed.length > 0) {
     const assetVenues = Object.fromEntries(
       Object.entries(venues).filter(([, v]) => allowed.includes(v.asset)),
@@ -386,7 +412,7 @@ export function assembleStrategy(
   const allRequested = (parsed.allocations ?? []).filter((a) => a.protocol);
   // Under an exposure set, `venues` is already restricted to the allowed assets, so any
   // off-set pick simply isn't present. Drop those silently and let the fallback fill in
-  // from the allowed venues — never rotate the user out of their chosen exposure.
+  // from the allowed venues, never rotate the user out of their chosen exposure.
   const locked = !!(allowed && allowed.length > 0);
   const requested = locked
     ? allRequested.filter((a) => a.protocol! in venues)
@@ -497,16 +523,18 @@ export function assembleStrategy(
         `YieldAI universe (execution on the roadmap).`
       : "";
   const lockNote = locked
-    ? `Exposure stays within ${assetLabels(allowed!)} as requested — every allocation is ` +
+    ? `Exposure stays within ${assetLabels(allowed!)} as requested, every allocation is ` +
       `denominated in one of those assets, so you keep exactly that exposure while it earns.`
     : "";
   const llmCaveat = parsed.caveat?.trim();
-  const caveat = [lockNote, llmCaveat, liveNote].filter(Boolean).join(" ") || undefined;
+  const caveat =
+    stripDashes([lockNote, llmCaveat, liveNote].filter(Boolean).join(" ")) || undefined;
 
   const strategy: ProposedStrategy = {
-    summary:
+    summary: stripDashes(
       parsed.summary?.trim() ||
-      `Targeting ~${(expectedApyBps / 100).toFixed(1)}% APY across ${allocations.length} market(s) (${categories.join(", ")}), risk-capped at ${maxRisk}/100.`,
+        `Targeting ~${(expectedApyBps / 100).toFixed(1)}% APY across ${allocations.length} market(s) (${categories.join(", ")}), risk-capped at ${maxRisk}/100.`,
+    ),
     caveat,
     expectedApyBps,
     riskLevel: riskLabel(portfolioRisk),

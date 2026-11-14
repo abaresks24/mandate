@@ -61,7 +61,7 @@ export default function Overview() {
         </p>
       </header>
 
-      {/* Headline numbers — big mono, quiet labels */}
+      {/* Headline numbers, big mono, quiet labels */}
       <section className="grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-hairline bg-hairline lg:grid-cols-4">
         <Metric
           label="Guardians bonded"
@@ -90,11 +90,11 @@ export default function Overview() {
         <div className="mb-6">
           <h2 className="section-h2">Strategy universe</h2>
           <p className="mt-1 max-w-2xl text-sm leading-relaxed text-muted">
-            The agent composes across real markets pulled live from DefiLlama —
+            The agent composes across real markets pulled live from DefiLlama:
             lending, RWA, staking, BTC, LP and more. Rates and TVL are current and
             risk is scored deterministically. Two venues are executable on testnet
             today (Rhea, Morpho); the rest are real markets with execution on the
-            roadmap — tagged below, nothing invented.
+            roadmap, tagged below. Nothing invented.
           </p>
         </div>
 
@@ -428,8 +428,8 @@ function StrategyTable() {
           = executable on testnet today (Rhea on NEAR, Morpho on Ethereum via Chain
           Signatures). Every other row is a{" "}
           <strong className="font-medium text-ink">real market</strong> with live
-          APY/TVL pulled from DefiLlama that the agent composes into strategies —
-          on-chain execution for those is on the roadmap. Nothing here is invented.
+          APY/TVL pulled from DefiLlama that the agent composes into strategies.
+          On-chain execution for those is on the roadmap. Nothing here is invented.
         </p>
         <p>
           Showing {sorted.length} of {rows.length} markets · APY/TVL refresh every

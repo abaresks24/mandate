@@ -3,7 +3,7 @@ import Link from "next/link";
 import { TopBar } from "@/components/TopBar";
 
 export const metadata: Metadata = {
-  title: "Docs — YieldAI",
+  title: "Docs, YieldAI",
   description:
     "How YieldAI works: an on-chain mandate, a bonded guardian committee, bond-as-insurance, cross-chain via Chain Signatures, and an AI that composes strategies you can verify.",
 };
@@ -52,7 +52,7 @@ export default function Docs() {
             <header className="mb-14">
               <h1 className="page-h1">YieldAI documentation</h1>
               <p className="mt-3 text-lg leading-relaxed text-muted">
-                An AI agent that manages your yield — and that you never have to
+                An AI agent that manages your yield, and that you never have to
                 trust. Its power is bounded on-chain, every risky move is checked
                 by a bonded guardian committee, and the bond is insurance.
               </p>
@@ -75,7 +75,7 @@ export default function Docs() {
                   <>
                     <B>A committee that checks reality.</B> Every risky move is
                     verified by a randomly-drawn committee of bonded guardians
-                    running in TEEs — they attest the facts the contract can&rsquo;t
+                    running in TEEs, they attest the facts the contract can&rsquo;t
                     see (cross-chain state, prices) before capital moves.
                   </>,
                   <>
@@ -98,7 +98,7 @@ export default function Docs() {
                 items={[
                   <>
                     <B>Tell it what you want.</B> Describe your goal in plain
-                    language — an amount, a target yield, a risk appetite, an asset
+                    language, an amount, a target yield, a risk appetite, an asset
                     exposure.
                   </>,
                   <>
@@ -126,7 +126,7 @@ export default function Docs() {
                 the target APY, maximum risk score, allowed protocols and chains,
                 the maximum share per venue, the maximum tolerated loss, and daily
                 caps. The agent holds only a function-call key scoped to the vault
-                and can propose nothing but <Em>templated actions</Em> — never
+                and can propose nothing but <Em>templated actions</Em>, never
                 arbitrary calldata.
               </P>
               <P>
@@ -149,12 +149,12 @@ export default function Docs() {
               </P>
               <P>
                 Guardians use <B>commit-reveal</B>: they publish a hash of their
-                report at decision time (so nothing leaks and no one — not even the
-                operator — can front-run), then reveal the plaintext after
+                report at decision time (so nothing leaks and no one, not even the
+                operator, can front-run), then reveal the plaintext after
                 execution. The contract verifies <Code>sha256(report)</Code>{" "}
                 matches the commit on-chain, applies the mandate rules to the
                 attested facts, and only then executes. A key invariant: the
-                summed bond of the drawn quorum must exceed the action value — so
+                summed bond of the drawn quorum must exceed the action value, so
                 it is never profitable to bribe a committee.
               </P>
             </Section>
@@ -170,15 +170,15 @@ export default function Docs() {
               <Ul
                 items={[
                   <>
-                    <B>False attestation</B> — the revealed facts are contradicted
+                    <B>False attestation</B>, the revealed facts are contradicted
                     by a verifiable source at the same block.
                   </>,
                   <>
-                    <B>Equivocation</B> — two contradicting reveals; fully decided
+                    <B>Equivocation</B>, two contradicting reveals; fully decided
                     on-chain against the stored commit.
                   </>,
                   <>
-                    <B>Unavailability</B> — a drawn guardian never commits by the
+                    <B>Unavailability</B>, a drawn guardian never commits by the
                     deadline (partial penalty).
                   </>,
                 ]}
@@ -193,7 +193,7 @@ export default function Docs() {
               <P>
                 A NEAR account, gated by the committee, controls an address on
                 another chain through <B>Chain Signatures</B> (threshold-MPC
-                signing). It signs a standard Ethereum transaction directly — no
+                signing). It signs a standard Ethereum transaction directly, no
                 bridge, no wrapped key. YieldAI has landed a real committee-gated
                 transaction on Ethereum from NEAR this way.
               </P>
@@ -208,18 +208,17 @@ export default function Docs() {
               <P>
                 The agent composes across a universe of venues spanning stablecoin
                 lending, RWA / savings, fixed-rate, delta-neutral, liquid staking,
-                BTC yield, DEX liquidity, restaking, and incentivized vaults —
-                across NEAR, Ethereum, Base and Arbitrum. For any brief it selects
+                BTC yield, DEX liquidity, restaking, and incentivized vaults,                 across NEAR, Ethereum, Base and Arbitrum. For any brief it selects
                 a subset and weights it; two different briefs yield visibly
                 different strategies.
               </P>
               <P>
-                <B>Risk scores are deterministic</B> — computed in code from audits,
+                <B>Risk scores are deterministic</B>, computed in code from audits,
                 TVL, age, exploit history, oracle dependency and yield source. The
                 LLM only explains the number; it never sets it.{" "}
                 <B>APYs are live</B>, pulled from DefiLlama and refreshed
                 continuously. A protocol like Morpho runs many markets with
-                different rates — YieldAI surfaces and names the deepest
+                different rates, YieldAI surfaces and names the deepest
                 (highest-TVL) market, so each rate is tied to a real market.
               </P>
             </Section>
@@ -229,20 +228,20 @@ export default function Docs() {
               <Ul
                 items={[
                   <>
-                    <B>Propose</B> — your prompt becomes a strategy (allocations,
+                    <B>Propose</B>, your prompt becomes a strategy (allocations,
                     live APYs, deterministic risk), or an honest refusal for the
                     impossible (&ldquo;40% APY, no risk&rdquo;).
                   </>,
                   <>
-                    <B>Learn more</B> — where each venue&rsquo;s yield comes from, the
+                    <B>Learn more</B>, where each venue&rsquo;s yield comes from, the
                     risk factor breakdown, the characteristic risk of the venue
                     type, and the mandate it maps to.
                   </>,
                   <>
-                    <B>Discuss</B> — refine the proposal in natural language.
+                    <B>Discuss</B>, refine the proposal in natural language.
                   </>,
                   <>
-                    <B>Launch</B> — connect a NEAR wallet and sign a real{" "}
+                    <B>Launch</B>, connect a NEAR wallet and sign a real{" "}
                     <Code>register_mandate</Code> transaction that records your
                     mandate on-chain.
                   </>,
@@ -252,11 +251,11 @@ export default function Docs() {
 
             <Section id="cli" label="09" title="Use it from your terminal">
               <P>
-                The protocol is usable programmatically — the same proposal +
+                The protocol is usable programmatically, the same proposal +
                 on-chain pipeline from a shell, no install, no API key:
               </P>
               <Pre>
-{`node cli/src/index.js chat "5000 USDC, around 8%, low risk"   # interactive — refine in the terminal
+{`node cli/src/index.js chat "5000 USDC, around 8%, low risk"   # interactive, refine in the terminal
 node cli/src/index.js propose "5000 USDC, around 8%, low risk"
 node cli/src/index.js guardians            # roster, bonds, slashings
 node cli/src/index.js committee a2         # a committee draw + tally

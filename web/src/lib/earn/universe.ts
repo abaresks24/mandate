@@ -2,7 +2,7 @@
 // real markets from DefiLlama for an allowlist of reputable protocols (Morpho,
 // Aave, Euler, Fluid, Compound, Spark, plus savings/RWA/staking/BTC/LP/restaking
 // venues), with real APY / TVL per specific market. A protocol like Morpho has
-// many markets — we surface the top ones and name each. On any failure we fall
+// many markets, we surface the top ones and name each. On any failure we fall
 // back to the static catalogue so the flow never breaks.
 
 import { fetchPools, type LlamaPool } from "./apy";
@@ -56,8 +56,8 @@ const PROTO: Record<string, Proto> = {
   // ─ Savings / RWA / yield stablecoins ─
   "sky-lending": { name: "Sky Savings", audits: 5, age_days: 1200, exploit_history: 0, oracle: false, ys: "lending", category: "savings rate" },
   usual: { name: "Usual", audits: 3, age_days: 420, exploit_history: 0, oracle: true, ys: "lending", category: "yield stablecoin" },
-  "ondo-finance": { name: "Ondo", audits: 3, age_days: 520, exploit_history: 0, oracle: false, ys: "lending", category: "RWA — T-bills" },
-  "ondo-yield-assets": { name: "Ondo", audits: 3, age_days: 520, exploit_history: 0, oracle: false, ys: "lending", category: "RWA — T-bills" },
+  "ondo-finance": { name: "Ondo", audits: 3, age_days: 520, exploit_history: 0, oracle: false, ys: "lending", category: "RWA, T-bills" },
+  "ondo-yield-assets": { name: "Ondo", audits: 3, age_days: 520, exploit_history: 0, oracle: false, ys: "lending", category: "RWA, T-bills" },
   // ─ Fixed-rate / delta-neutral ─
   "pendle-v2": { name: "Pendle", audits: 4, age_days: 900, exploit_history: 0, oracle: true, ys: "derivatives", category: "fixed-rate" },
   "ethena-usde": { name: "Ethena", audits: 4, age_days: 450, exploit_history: 0, oracle: true, ys: "derivatives", category: "delta-neutral" },
@@ -97,8 +97,7 @@ const CANON_CHAIN: Record<string, string> = {
 const MIN_TVL = 5_000_000; // ignore dust / near-dead markets
 const MIN_APY = 0.3; // drop ~0% collateral-only markets (not a yield strategy)
 const MAX_APY = 150; // clamp transient LP spikes
-// Top-N markets per (PROTOCOL × ASSET). Grouping by asset too — not just protocol —
-// guarantees each asset (BTC, ETH, stablecoin, …) gets real coverage, instead of a
+// Top-N markets per (PROTOCOL × ASSET). Grouping by asset too, not just protocol, // guarantees each asset (BTC, ETH, stablecoin, …) gets real coverage, instead of a
 // multi-asset protocol's deepest (usually stablecoin) markets crowding out its BTC ones.
 const PER_PROTOCOL_ASSET = 3;
 
@@ -115,7 +114,7 @@ function classifyLeg(token: string): string | null {
 }
 
 // An LP pair is only "pure" exposure to an asset when BOTH legs are that asset
-// (WBTC-TBTC = BTC). A mixed pair (WBTC-WETH) is a BASKET — holding it is NOT full
+// (WBTC-TBTC = BTC). A mixed pair (WBTC-WETH) is a BASKET, holding it is NOT full
 // BTC exposure, so it must never satisfy a "stay in BTC" lock.
 function inferAsset(symbol: string): string {
   const legs = symbol.split(/[-/_ ]+/).filter(Boolean);
@@ -128,13 +127,13 @@ function inferAsset(symbol: string): string {
 function sourceOfYieldFor(cat: string, name: string): string {
   switch (cat) {
     case "lending": return `Lenders earn the variable interest borrowers pay on ${name}'s money market. Your capital stays in the supplied asset.`;
-    case "savings rate": return "A protocol savings rate backed by fees and RWA — no borrower or oracle dependency.";
+    case "savings rate": return "A protocol savings rate backed by fees and RWA, no borrower or oracle dependency.";
     case "yield stablecoin": return "A yield-bearing stablecoin; yield comes from the protocol's backing strategy.";
-    case "RWA — T-bills": return "Backed by short-term US Treasuries; the yield is the T-bill rate (off-chain custody).";
+    case "RWA, T-bills": return "Backed by short-term US Treasuries; the yield is the T-bill rate (off-chain custody).";
     case "fixed-rate": return "A fixed-rate position (Pendle PT) that locks yield to maturity.";
     case "delta-neutral": return "A delta-neutral basis trade: staking yield plus perp funding.";
     case "liquid staking": return "Liquid-staking rewards, denominated in the staked asset.";
-    case "BTC staking": return "Liquid-staked BTC — real BTC exposure that also earns a staking yield.";
+    case "BTC staking": return "Liquid-staked BTC, real BTC exposure that also earns a staking yield.";
     case "BTC yield": return "A yield-bearing BTC vault blending staking and basis strategies.";
     case "restaking": return "Restaking rewards from securing additional services, on top of staking.";
     case "DEX liquidity": return "Swap fees and incentives from providing liquidity to this pool.";
@@ -145,9 +144,9 @@ function sourceOfYieldFor(cat: string, name: string): string {
 function keyRiskFor(cat: string): string {
   const m: Record<string, string> = {
     lending: "Smart-contract and utilization risk; your capital stays in the supplied asset.",
-    "savings rate": "Protocol/peg risk only — backed by fees and RWA, no borrower or oracle dependency.",
+    "savings rate": "Protocol/peg risk only, backed by fees and RWA, no borrower or oracle dependency.",
     "yield stablecoin": "Peg and backing-strategy risk for the stablecoin.",
-    "RWA — T-bills": "Off-chain counterparty and custody risk: the Treasuries are held by a real-world issuer.",
+    "RWA, T-bills": "Off-chain counterparty and custody risk: the Treasuries are held by a real-world issuer.",
     "fixed-rate": "The rate is locked to maturity; exiting early means selling at market (duration risk).",
     "delta-neutral": "Funding can turn negative and the hedge leans on centralized venues.",
     "liquid staking": "Validator slashing risk, and you carry the underlying asset's price (ETH/NEAR).",
@@ -155,7 +154,7 @@ function keyRiskFor(cat: string): string {
     "BTC yield": "BTC price exposure plus strategy/counterparty risk in the yield engine.",
     restaking: "Extra slashing surface from the services you help secure; a newer primitive.",
     "DEX liquidity": "Impermanent loss if the pair moves; you take the non-stable asset's exposure.",
-    "institutional lending": "Counterparty/credit risk — you lend to vetted institutions; a default hits principal.",
+    "institutional lending": "Counterparty/credit risk, you lend to vetted institutions; a default hits principal.",
     "leveraged yield": "Leverage amplifies both yield and loss; liquidation risk if the position moves.",
   };
   return m[cat] ?? "Smart-contract risk and any asset-price exposure implied by this venue.";
@@ -219,7 +218,7 @@ export async function buildShortlist(): Promise<Record<string, Venue>> {
   if (venues.length < 6) return fallbackFromCatalogue();
 
   // Top-N markets PER (PROTOCOL × ASSET), so every allowlisted protocol is
-  // represented AND every asset it serves gets coverage — a BTC holder sees real
+  // represented AND every asset it serves gets coverage, a BTC holder sees real
   // BTC markets, not just a protocol's deepest (usually stablecoin) pools.
   const byGroup = new Map<string, Venue[]>();
   for (const v of venues) {
