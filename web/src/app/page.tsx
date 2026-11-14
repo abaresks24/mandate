@@ -109,8 +109,7 @@ export default function Home() {
             <div className="sc__heroText">
               <h1 className="sc__title">YieldAI</h1>
               <p className="sc__line">
-                An AI agent earns yield within rules you set on-chain — and you
-                never have to trust the agent.
+                An AI agent that earns yield inside limits you set on-chain.
               </p>
             </div>
           </div>
@@ -123,27 +122,24 @@ export default function Home() {
         {/* Thesis */}
         <section className="sc__sec sc__sec--thesis">
           <p className="sc__thesis">
-            Put an agent to work. <em>Keep the control.</em>
+            An AI manages the yield.
+            <br />
+            The chain keeps it <em>in bounds.</em>
           </p>
           <p className="sc__lede">
-            YieldAI&rsquo;s power is bounded on-chain, and every risky move is
-            checked by bonded guardians. The agent never holds custody — your
-            funds stay yours, and a kill switch unwinds everything on demand.
+            You define what the agent may do. The contract enforces it. The agent
+            never holds your funds, and you can return to stablecoins at any time.
           </p>
         </section>
 
         {/* Problem */}
         <section className="sc__sec">
           <span className="sc__kicker">The problem</span>
-          <h2 className="sc__h2">
-            An AI that moves your money is only as safe as what it&rsquo;s
-            allowed to do.
-          </h2>
+          <h2 className="sc__h2">An agent with your keys is a single point of failure.</h2>
           <p className="sc__body">
-            Hand an autonomous agent your capital and you&rsquo;re trusting a
-            black box: a prompt, a model, an API key. If it hallucinates, gets
-            jailbroken, or simply errs, the money is gone. &ldquo;Trust me&rdquo;
-            is not a security model.
+            A model can be wrong, prompt-injected, or over-eager. If nothing but
+            good intentions sits between it and your balance, one bad call empties
+            the account. Intentions are not a security model.
           </p>
         </section>
 
@@ -151,28 +147,23 @@ export default function Home() {
         <section className="sc__sec sc__sec--mandate">
           <div className="sc__split">
             <div className="sc__split-copy">
-              <span className="sc__kicker">The mandate</span>
-              <h2 className="sc__h2 sc__h2--wide">
-                Its power is bounded on-chain.
-              </h2>
+              <span className="sc__kicker">Limits on-chain</span>
+              <h2 className="sc__h2 sc__h2--wide">The agent only acts inside your rules.</h2>
               <p className="sc__body">
-                You set the rules — allowed protocols, a risk ceiling, a loss
-                cap, a daily limit — and they live in a contract. Anything the
-                agent proposes outside those bounds is <strong>rejected by the
-                contract</strong>, not by a promise. The agent can only ever act
-                inside the box you drew.
+                You set the allowed protocols, a risk ceiling, a maximum loss and
+                a daily spend limit. They live in a contract. Any action outside
+                them is <strong>rejected on-chain, before it runs</strong> — not
+                caught after the money has moved.
               </p>
             </div>
             <ul className="sc__props" style={{ marginTop: 0 }}>
               <li className="sc__prop">
-                <span className="sc__prop-ic">§</span>
                 <h3>On-chain mandate</h3>
-                <p>The rules the agent must honor are enforced by the contract.</p>
+                <p>Your rules are enforced by the contract, not by the agent.</p>
               </li>
               <li className="sc__prop">
-                <span className="sc__prop-ic">◇</span>
-                <h3>Risk-capped</h3>
-                <p>A deterministic score bounds every allocation; the cap is yours.</p>
+                <h3>Risk ceiling</h3>
+                <p>Every allocation is scored and capped at a limit you choose.</p>
               </li>
             </ul>
           </div>
@@ -180,37 +171,32 @@ export default function Home() {
 
         {/* The guardians */}
         <section className="sc__sec">
-          <span className="sc__kicker">The guardians</span>
+          <span className="sc__kicker">Verification</span>
           <h2 className="sc__h2 sc__h2--wide">
-            Every cross-chain move is verified before capital moves.
+            Cross-chain facts are checked before funds move.
           </h2>
           <p className="sc__body">
-            For facts the contract can&rsquo;t see, a randomly-drawn committee of
-            bonded guardians attests the truth inside a trusted enclave. Their
-            pooled bond <strong>exceeds the value at stake</strong> on every
-            action — lie, and the bond is slashed. Bond is insurance, not a
-            formality.
+            Some facts live off-chain, where the contract cannot see them. A
+            randomly drawn committee of guardians attests them inside a trusted
+            enclave. Their combined bond is larger than the amount at stake, so a
+            false attestation <strong>costs more than it could gain</strong>.
           </p>
           <ul className="sc__props">
             <li className="sc__prop">
-              <span className="sc__prop-ic">⬡</span>
-              <h3>TEE-attested</h3>
-              <p>Guardians run verified code in trusted enclaves, not on faith.</p>
+              <h3>Trusted enclaves</h3>
+              <p>Guardians run audited code in a TEE; the output is verifiable.</p>
             </li>
             <li className="sc__prop">
-              <span className="sc__prop-ic">⚖</span>
-              <h3>Bond as insurance</h3>
-              <p>Quorum bond is set above the value at risk, action by action.</p>
+              <h3>Bond above value</h3>
+              <p>The committee&rsquo;s bond exceeds the value at risk on each action.</p>
             </li>
             <li className="sc__prop">
-              <span className="sc__prop-ic">⟲</span>
-              <h3>Kill switch</h3>
-              <p>You can halt the agent and unwind to stablecoins at any time.</p>
+              <h3>Owner kill switch</h3>
+              <p>Pause the agent and return to stablecoins whenever you want.</p>
             </li>
             <li className="sc__prop">
-              <span className="sc__prop-ic">◈</span>
-              <h3>Built on NEAR</h3>
-              <p>Live on testnet, with a real cross-chain tx landed via Chain Signatures.</p>
+              <h3>On NEAR</h3>
+              <p>Live on testnet, with a real cross-chain transaction on Ethereum.</p>
             </li>
           </ul>
         </section>
@@ -218,30 +204,30 @@ export default function Home() {
         {/* Lifecycle */}
         <section className="sc__sec">
           <span className="sc__kicker">How it works</span>
-          <h2 className="sc__h2">Four steps. No blind trust at any of them.</h2>
+          <h2 className="sc__h2">Four steps, each one checkable.</h2>
           <ol className="sc__life">
             <li className="sc__life-step">
               <div>
-                <h3>Tell it what you want</h3>
-                <p>Describe your goal in plain language — an amount, a target yield, a risk appetite, an asset to stay exposed to.</p>
+                <h3>Set the mandate</h3>
+                <p>Describe your goal and limits in plain language: amount, target yield, risk, assets to keep.</p>
               </div>
             </li>
             <li className="sc__life-step">
               <div>
-                <h3>The AI proposes a strategy</h3>
-                <p>It drafts a plan from real, live markets that must fit inside your mandate. Anything outside the rules is refused before it runs.</p>
+                <h3>Review the strategy</h3>
+                <p>The agent drafts a plan from live markets that fits your mandate. Out-of-bounds plans are refused.</p>
               </div>
             </li>
             <li className="sc__life-step">
               <div>
-                <h3>Guardians verify every cross-chain move</h3>
-                <p>Bonded guardians attest remote facts in a TEE. Their pooled bond exceeds the value at stake — lie and it is slashed.</p>
+                <h3>Guardians verify</h3>
+                <p>Cross-chain facts are attested in a TEE by a bonded committee before any capital moves.</p>
               </div>
             </li>
             <li className="sc__life-step">
               <div>
-                <h3>You keep a kill switch</h3>
-                <p>At any moment you can halt the agent and unwind positions back to stablecoins. Control never leaves you.</p>
+                <h3>Stay in control</h3>
+                <p>Pause the agent and return to stablecoins at any time.</p>
               </div>
             </li>
           </ol>
@@ -249,7 +235,7 @@ export default function Home() {
 
         {/* Closing */}
         <section className="sc__sec sc__sec--close">
-          <p className="sc__closingLine">Put an agent to work. Keep the control.</p>
+          <p className="sc__closingLine">Managed by an agent. Bounded by the chain.</p>
           <div className="sc__closingLinks">
             <Link href="/app" className="sg-launch sg-launch--lg">
               Launch app →

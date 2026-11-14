@@ -76,20 +76,22 @@
     text-rendering: optimizeLegibility;
   }
 
-  /* SINGLE fixed global navy field — a deep navy with a top-weighted steel glow,
-     plus a faint inline grain so the gradient never bands. Identical at every
-     scroll position, so the field is one seamless continuous surface. */
+  /* SINGLE fixed global navy field. The paper-grain texture (a light tile) is
+     tinted to navy with a `multiply` blend against a navy base, so the SAME paper
+     motif reappears in blue; a steel glow is screened on top for depth. Identical
+     at every scroll position, so the field is one seamless continuous surface. */
   body::before {
     content: "";
     position: fixed;
     inset: 0;
     z-index: -2;
-    background-color: var(--red-mid);
+    background-color: #1a3b5e; /* navy the texture is multiplied down onto */
     background-image:
-      radial-gradient(120% 90% at 50% -5%, rgba(46, 111, 168, 0.3) 0%, rgba(14, 34, 56, 0) 55%),
-      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+      radial-gradient(130% 95% at 50% -8%, rgba(70, 130, 185, 0.4) 0%, rgba(14, 34, 56, 0) 58%),
+      url("/brand/paper-fine.jpg");
+    background-blend-mode: screen, multiply;
     background-repeat: no-repeat, repeat;
-    background-size: cover, 140px 140px;
+    background-size: cover, 300px 300px;
     background-position: center center;
     pointer-events: none;
   }

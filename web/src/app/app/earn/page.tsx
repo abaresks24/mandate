@@ -111,8 +111,8 @@ export default function Earn() {
       <header>
         <h1 className="page-h1">Earn</h1>
         <p className="page-lede">
-          Describe what you want. The agent proposes a strategy that fits inside
-          your on-chain mandate — nothing outside the rules can run.
+          Describe what you want. The agent proposes a strategy that fits your
+          on-chain mandate; anything outside the rules is refused.
         </p>
       </header>
 

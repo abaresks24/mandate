@@ -5,22 +5,22 @@ import { Toaster } from "sonner";
 import { WalletProvider } from "@/components/wallet/WalletProvider";
 
 export const metadata: Metadata = {
-  title: "YieldAI — earn yield you can actually trust",
+  title: "YieldAI — agent-managed yield, bounded on-chain",
   description:
-    "An AI agent manages your yield within an on-chain mandate — and you never have to trust the agent. Every risky cross-chain move is verified by a randomly-drawn committee of bonded guardians. Bond is insurance.",
+    "An AI agent earns yield inside limits you set on-chain. The contract rejects anything out of bounds, and cross-chain facts are verified by a bonded guardian committee.",
   metadataBase: new URL("https://mandate.example"),
   openGraph: {
-    title: "YieldAI — earn yield you can actually trust",
+    title: "YieldAI — agent-managed yield, bounded on-chain",
     description:
-      "An AI agent manages your yield, bounded on-chain and verified by a bonded guardian committee. Your funds stay yours.",
+      "An AI agent earns yield inside on-chain limits. The contract enforces the rules; a bonded committee verifies cross-chain facts.",
     siteName: "YieldAI",
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "YieldAI — earn yield you can actually trust",
+    title: "YieldAI — agent-managed yield, bounded on-chain",
     description:
-      "An AI yield agent whose power is bounded on-chain and checked by bonded guardians.",
+      "An AI agent earns yield inside limits you set on-chain, verified by a bonded guardian committee.",
   },
 };
 

@@ -56,8 +56,8 @@ export default function Overview() {
       <header>
         <h1 className="page-h1">Overview</h1>
         <p className="page-lede">
-          An AI agent earns yield within rules you set — verified by bonded
-          guardians, never by blind trust.
+          An AI agent earns yield inside limits you set on-chain. Cross-chain
+          moves are verified by a bonded guardian committee.
         </p>
       </header>
 
