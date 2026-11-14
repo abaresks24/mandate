@@ -3,7 +3,7 @@
    Textured red-paper field + parchment surfaces, classical serif display
    (Cormorant Garamond) + Inter UI + mono data, antique-gold hero accent.
    ============================================================================= */
-@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&display=swap");
 
 @tailwind base;
 @tailwind components;
@@ -12,46 +12,46 @@
 :root {
   color-scheme: light;
 
-  /* Brand blues (interactive accent + field) */
-  --red-brand: #2e6fa8; /* mid blue — the interactive accent */
+  /* Cool-blue DARK theme: navy field + blue sheets, near-white text. */
+  --red-brand: #5b9bd5; /* bright blue, the interactive accent (reads on dark) */
   --red-mid: #0e2238; /* navy field */
   --red-hi: #163a5c; /* lighter navy glow */
-  --red-edge: #0a1a2c; /* field edge */
+  --red-edge: #081626; /* field edge */
 
-  /* Neutrals / cool surfaces */
-  --ink: #0c1826;
-  --parchment: #f1f5f9;
-  --parchment-2: #e3eaf2;
-  --parchment-3: #d8e1eb;
-  --gold: #1e3a5f; /* deep blue — hero numbers */
+  /* Cool-blue surfaces (the "blue parchment") + near-white text */
+  --ink: #eaf1f8; /* near-white text on blue */
+  --parchment: #15314c; /* card base */
+  --parchment-2: #1b3a59; /* lighter / nested panel */
+  --parchment-3: #0f2840; /* deepest inset (inputs) */
+  --gold: #8fc2ee; /* headline / hero number, bright cold blue */
 
-  --ink-2: #2a3b4d;
-  --ink-mut: #5a6b7d;
+  --ink-2: #cad9e8;
+  --ink-mut: #9fb4cb; /* muted */
 
-  --line: #d5dee8;
-  --line-strong: #c2cedc;
+  --line: #2c4c6b; /* subtle border on dark blue */
+  --line-strong: #3a5f84;
 
   --cream: #eaf1f8;
   --cream-mut: #aec2d6;
   --cream-dim: rgba(234, 241, 248, 0.68);
 
-  --good: #2e7d6b;
-  --good-weak: #dff0eb;
-  --bad: #c0392b;
-  --bad-weak: #f6e1de;
-  --warn: #b7791f;
-  --warn-weak: #f3e8d2;
-  --hidden: #3e5c7e;
-  --hidden-weak: #e1e8f0;
+  --good: #5bc0a8;
+  --good-weak: rgba(91, 192, 168, 0.14);
+  --bad: #e8897e;
+  --bad-weak: rgba(232, 137, 126, 0.14);
+  --warn: #e0b56a;
+  --warn-weak: rgba(224, 181, 106, 0.14);
+  --hidden: #7fa6cc;
+  --hidden-weak: rgba(127, 166, 204, 0.14);
 
-  --emboss: 0 1px 0 rgba(255, 255, 255, 0.7) inset,
-    0 1px 2px rgba(10, 26, 44, 0.08), 0 10px 30px rgba(10, 26, 44, 0.14);
+  --emboss: 0 1px 0 rgba(255, 255, 255, 0.06) inset,
+    0 1px 2px rgba(3, 10, 18, 0.4), 0 12px 30px rgba(3, 10, 18, 0.42);
 
   --radius: 14px;
   --radius-sm: 10px;
   --radius-pill: 999px;
 
-  --font-serif: "Cormorant Garamond", "Spectral", Georgia, "Times New Roman", serif;
+  --font-serif: "Space Grotesk", "Inter", ui-sans-serif, system-ui, sans-serif;
   --font-ui: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, "Cascadia Code", monospace;
 }
@@ -117,7 +117,7 @@
   h1, h2, h3, h4 {
     font-family: var(--font-serif);
     font-weight: 600;
-    letter-spacing: 0;
+    letter-spacing: -0.018em;
     line-height: 1.12;
     margin: 0;
     color: inherit;
@@ -131,7 +131,7 @@
   .display {
     font-family: var(--font-serif);
     text-wrap: balance;
-    letter-spacing: 0;
+    letter-spacing: -0.018em;
   }
 }
 
@@ -146,7 +146,7 @@
   .page-h1 {
     font-family: var(--font-serif);
     @apply text-4xl font-semibold leading-tight text-ink sm:text-5xl;
-    letter-spacing: 0;
+    letter-spacing: -0.018em;
   }
   .page-lede {
     @apply mt-3 max-w-2xl text-lg leading-relaxed text-muted;
@@ -154,7 +154,7 @@
   .section-h2 {
     font-family: var(--font-serif);
     @apply text-2xl font-semibold text-ink;
-    letter-spacing: 0;
+    letter-spacing: -0.018em;
   }
 
   .num {
@@ -165,14 +165,53 @@
   .hero-num {
     font-family: var(--font-serif);
     @apply font-semibold leading-none text-gold;
-    letter-spacing: 0;
+    letter-spacing: -0.018em;
   }
 
-  /* Parchment surface with letterpress emboss. */
+  /* Inner card: a lighter blue panel that sits ON the sheet, bordered so nested
+     cards stay distinct. */
   .surface-card {
-    background: linear-gradient(180deg, var(--parchment) 0%, var(--parchment-2) 100%);
+    background: linear-gradient(180deg, var(--parchment-2) 0%, var(--parchment) 100%);
     @apply rounded-xl border border-hairline text-ink;
-    box-shadow: var(--emboss);
+    box-shadow: 0 1px 2px rgba(3, 10, 18, 0.35), 0 8px 24px rgba(3, 10, 18, 0.28);
+  }
+
+  /* The "blue parchment" sheet the app/docs content sits on. A cool-blue gradient
+     carrying the same paper grain as the field, but LIGHTER + a finer tile, so the
+     sheet and the background field read as two distinct surfaces. */
+  .sheet {
+    position: relative;
+    isolation: isolate;
+    overflow: hidden;
+    background: linear-gradient(170deg, #1d3f5f 0%, #15304b 55%, #112a43 100%);
+    @apply rounded-2xl border text-ink;
+    border-color: var(--line-strong);
+    box-shadow: 0 2px 4px rgba(3, 10, 18, 0.4), 0 28px 70px rgba(3, 10, 18, 0.5);
+  }
+  .sheet::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background-image: url("/brand/paper-fine.jpg");
+    background-repeat: repeat;
+    background-size: 150px 150px; /* finer than the 300px field tile */
+    mix-blend-mode: soft-light;
+    opacity: 0.45;
+  }
+  /* Top highlight so the sheet reads as a lifted surface. */
+  .sheet::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: radial-gradient(120% 60% at 50% -10%, rgba(120, 170, 220, 0.16) 0%, rgba(120, 170, 220, 0) 60%);
+  }
+  .sheet > * {
+    position: relative;
+    z-index: 1;
   }
 
   /* ── One table style, shared by every table ── */
@@ -203,13 +242,13 @@
       focus-visible:text-ink focus-visible:outline-none;
   }
 
-  /* ── Controls: text inputs & the search box (parchment inset) ── */
+  /* ── Controls: text inputs & the search box (dark-blue inset) ── */
   .input {
-    background: var(--parchment-2);
+    background: var(--parchment-3);
     @apply w-full rounded-lg border border-edge px-3.5 py-2.5 text-sm text-ink
       transition-colors placeholder:text-muted/70 hover:border-muted/50
       focus:border-near focus:outline-none;
-    box-shadow: 0 1px 2px rgba(13, 10, 13, 0.1) inset;
+    box-shadow: 0 1px 2px rgba(3, 10, 18, 0.5) inset;
   }
 
   .focusable {
@@ -240,7 +279,7 @@
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(13, 10, 13, 0.06),
+    rgba(255, 255, 255, 0.07),
     transparent
   );
   animation: shimmer 1.6s infinite;
@@ -358,12 +397,12 @@
   font-family: var(--font-ui);
   font-weight: 600;
   font-size: 14px;
-  color: var(--red-brand);
-  background: var(--parchment);
-  border: 1px solid var(--line-strong);
+  color: #0e2238;
+  background: #eaf1f8;
+  border: 1px solid rgba(255, 255, 255, 0.5);
   padding: 9px 17px;
   border-radius: var(--radius-sm);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 6px 18px rgba(5, 12, 20, 0.34);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.6) inset, 0 6px 18px rgba(3, 10, 18, 0.4);
   transition: 140ms ease;
   white-space: nowrap;
 }

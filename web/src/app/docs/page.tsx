@@ -30,7 +30,7 @@ export default function Docs() {
       <TopBar />
 
       <div className="mx-auto w-full max-w-6xl px-4 py-10 sm:px-6 sm:py-14">
-        <div className="surface-card grid gap-12 px-6 py-10 sm:px-10 sm:py-12 lg:grid-cols-[200px_1fr] lg:gap-16">
+        <div className="sheet grid gap-12 px-6 py-10 sm:px-10 sm:py-12 lg:grid-cols-[200px_1fr] lg:gap-16">
           {/* TOC */}
           <aside className="lg:sticky lg:top-24 lg:self-start">
             <p className="label mb-4">Documentation</p>

@@ -8,49 +8,49 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // --- SURFACES (cool off-white — three sober blues palette) ---
-        paper: "#F1F5F9", // primary cool surface (cards, sheets, bars)
-        mist: "#E3EAF2", // secondary / hover
-        ink: "#0C1826", // deep-navy text
-        muted: "#5A6B7D", // cool gray-blue captions
-        hairline: "#D5DEE8", // cool hairline
-        edge: "#C2CEDC", // stronger cool line
-        surface: "#F1F5F9", // legacy alias
+        // --- COOL-BLUE DARK surfaces (the "blue parchment") + near-white text ---
+        paper: "#15314C", // card / sheet / bar base
+        mist: "#1B3A59", // lighter / nested / hover
+        ink: "#EAF1F8", // near-white text
+        muted: "#9FB4CB", // cool gray-blue captions
+        hairline: "#2C4C6B", // subtle border on dark blue
+        edge: "#3A5F84", // stronger border
+        surface: "#15314C", // legacy alias
 
         // --- THE NAVY FIELD (body background) — token name kept as `red` ---
         red: "#0E2238", // field mid (deep navy)
-        "red-edge": "#0A1A2C", // field edge
+        "red-edge": "#081626", // field edge
 
-        // --- THE THREE BLUES ---
-        // Mid blue = interactive accent (active states, links, primary btn).
-        near: "#2E6FA8",
-        "near-dim": "#245A89",
-        // Deep blue = the headline / hero-number accent.
-        gold: "#1E3A5F",
+        // --- THE BLUES ---
+        // Bright blue = interactive accent (active states, links, primary btn).
+        near: "#5B9BD5",
+        "near-dim": "#4E8BC2",
+        // Bright cold blue = the headline / hero-number accent.
+        gold: "#8FC2EE",
         // Light steel = third blue (secondary / special state).
-        evm: "#3E5C7E",
-        plum: "#3E5C7E",
-        "plum-weak": "#E1E8F0",
+        evm: "#7FA6CC",
+        plum: "#7FA6CC",
+        "plum-weak": "#24415E",
         steel: "#7FA6CC", // light blue for charts / soft accents
 
         // --- TEXT ON THE NAVY FIELD (cool near-white) ---
         cream: "#EAF1F8",
         "cream-mut": "#AEC2D6",
 
-        // --- SEMANTIC STATES (non-blue so they stay legible) ---
-        danger: "#C0392B",
-        warn: "#B7791F",
-        ok: "#2E7D6B",
-        good: "#2E7D6B",
+        // --- SEMANTIC STATES (brightened so they read on dark blue) ---
+        danger: "#E8897E",
+        warn: "#E0B56A",
+        ok: "#5BC0A8",
+        good: "#5BC0A8",
 
         // Legacy tokens kept so preserved components still compile.
-        panel: "#E3EAF2",
-        elevated: "#D8E1EB",
+        panel: "#1B3A59",
+        elevated: "#24415E",
       },
       fontFamily: {
-        // Inter for UI/body, classical serif for display, mono for data.
+        // Inter for UI/body, Space Grotesk for display (Morpho-ish grotesque), mono for data.
         sans: ["Inter", "ui-sans-serif", "system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
-        serif: ['"Cormorant Garamond"', '"Spectral"', "Georgia", '"Times New Roman"', "serif"],
+        serif: ['"Space Grotesk"', "Inter", "ui-sans-serif", "system-ui", "sans-serif"],
         mono: ["ui-monospace", "SFMono-Regular", "Menlo", '"Cascadia Code"', "monospace"],
       },
       letterSpacing: {
@@ -64,11 +64,11 @@ const config: Config = {
         "3xl": "1.5rem",
       },
       boxShadow: {
-        // Soft lift for the cool surfaces.
+        // Elevation for dark-blue surfaces.
         emboss:
-          "0 1px 0 rgba(255,255,255,0.7) inset, 0 1px 2px rgba(10,26,44,0.08), 0 10px 30px rgba(10,26,44,0.14)",
+          "0 1px 0 rgba(255,255,255,0.06) inset, 0 1px 2px rgba(3,10,18,0.4), 0 12px 30px rgba(3,10,18,0.42)",
         "emboss-inset":
-          "0 1px 2px rgba(10,26,44,0.12) inset, 0 1px 0 rgba(255,255,255,0.6)",
+          "0 1px 2px rgba(3,10,18,0.5) inset, 0 1px 0 rgba(255,255,255,0.05)",
       },
       keyframes: {
         shimmer: {
