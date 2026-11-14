@@ -8,6 +8,7 @@ import { useWallet } from "@/components/wallet/WalletProvider";
 import { CROSSCHAIN } from "@/lib/near";
 import { registerMandate, txExplorerUrl } from "@/lib/registry";
 import { Donut, GrowthCurve, ApyBars, type Slice } from "@/components/StrategyVisuals";
+import { riskLabel } from "@/lib/earn/risk";
 import type {
   Allocation,
   ProposedStrategy,
@@ -262,20 +263,54 @@ function ProposalView(props: {
     }
   }, [props.showLaunch]);
 
-  // Breakdown by protocol (merge markets of the same protocol) and by asset.
+  // Editable weights: start from the agent's proposal; the user can rebalance by
+  // hand and every figure below (APY, risk, donuts, bars, projection) recomputes.
+  const original = s.allocations.map((a) => a.weightPct);
+  const [weights, setWeights] = useState<number[]>(original);
+  useEffect(() => {
+    setWeights(s.allocations.map((a) => a.weightPct));
+  }, [s]);
+
+  const total = weights.reduce((x, y) => x + y, 0);
+  const share = (i: number) => (total > 0 ? weights[i]! / total : 0); // normalized 0..1
+  const edited = weights.some((w, i) => w !== original[i]);
+
+  // Live-recomputed headline figures from the (possibly edited) weights.
+  const blendedApyBps = Math.round(
+    s.allocations.reduce((acc, a, i) => acc + a.apyBps * share(i), 0),
+  );
+  const portfolioRisk = Math.round(
+    s.allocations.reduce((acc, a, i) => acc + a.riskScore * share(i), 0),
+  );
+
+  const setWeight = (i: number, v: number) =>
+    setWeights((w) => w.map((x, j) => (j === i ? Math.max(0, Math.min(100, Math.round(v))) : x)));
+  const normalize = () =>
+    setWeights((w) => {
+      const t = w.reduce((x, y) => x + y, 0) || 1;
+      const scaled = w.map((x) => Math.round((x / t) * 100));
+      const drift = 100 - scaled.reduce((x, y) => x + y, 0);
+      if (scaled.length) scaled[0] += drift;
+      return scaled;
+    });
+  const reset = () => setWeights(original);
+
+  // Breakdown by protocol / asset, using the edited weights.
   const byProtocol = new Map<string, number>();
   const byAsset = new Map<string, number>();
-  for (const a of s.allocations) {
-    byProtocol.set(a.label, (byProtocol.get(a.label) ?? 0) + a.weightPct);
-    byAsset.set(a.exposure, (byAsset.get(a.exposure) ?? 0) + a.weightPct);
-  }
-  const protocolSlices: Slice[] = Array.from(byProtocol, ([label, value]) => ({ label, value })).sort(
-    (x, y) => y.value - x.value,
-  );
+  s.allocations.forEach((a, i) => {
+    byProtocol.set(a.label, (byProtocol.get(a.label) ?? 0) + weights[i]!);
+    byAsset.set(a.exposure, (byAsset.get(a.exposure) ?? 0) + weights[i]!);
+  });
+  const protocolSlices: Slice[] = Array.from(byProtocol, ([label, value]) => ({ label, value }))
+    .filter((x) => x.value > 0)
+    .sort((x, y) => y.value - x.value);
   const assetSlices: Slice[] = Array.from(byAsset, ([label, value]) => ({
     label: label.toUpperCase(),
     value,
-  })).sort((x, y) => y.value - x.value);
+  }))
+    .filter((x) => x.value > 0)
+    .sort((x, y) => y.value - x.value);
 
   return (
     <div className="flex flex-col gap-6">
@@ -288,15 +323,17 @@ function ProposalView(props: {
         {/* Headline */}
         <div className="flex flex-wrap items-end justify-between gap-6 border-b border-hairline pb-6">
           <div>
-            <div className="label">Expected APY</div>
+            <div className="label">
+              Expected APY {edited && <span className="text-near">· customized</span>}
+            </div>
             <div className="num mt-1 text-5xl font-semibold text-near">
-              {pct(s.expectedApyBps)}
+              {pct(blendedApyBps)}
             </div>
           </div>
           <div className="text-right">
             <div className="label">Risk level</div>
             <div className="num mt-1 text-3xl font-semibold text-ink">
-              {s.riskLevel}
+              {riskLabel(portfolioRisk)}
             </div>
           </div>
         </div>
@@ -308,8 +345,19 @@ function ProposalView(props: {
           </p>
         )}
 
+        {/* Customize allocation */}
+        <AllocationEditor
+          allocations={s.allocations}
+          weights={weights}
+          total={total}
+          edited={edited}
+          onChange={setWeight}
+          onNormalize={normalize}
+          onReset={reset}
+        />
+
         {/* Breakdown, donuts */}
-        <div className="mt-8 grid gap-8 border-t border-hairline pt-8 sm:grid-cols-2">
+        <div className="mt-10 grid gap-8 border-t border-hairline pt-8 sm:grid-cols-2">
           <Donut title="Allocation by protocol" slices={protocolSlices} />
           <Donut title="Exposure by asset" slices={assetSlices} />
         </div>
@@ -317,26 +365,26 @@ function ProposalView(props: {
         {/* Yield, per-allocation APY + projected growth */}
         <div className="mt-10 grid gap-8 border-t border-hairline pt-8 lg:grid-cols-2">
           <ApyBars
-            items={s.allocations.map((a) => ({
+            items={s.allocations.map((a, i) => ({
               label: a.apyMarket ? `${a.label} · ${a.apyMarket}` : a.label,
               apyBps: a.apyBps,
-              weightPct: a.weightPct,
+              weightPct: Math.round(share(i) * 100),
             }))}
           />
-          <GrowthCurve apyBps={s.expectedApyBps} />
+          <GrowthCurve apyBps={blendedApyBps} />
         </div>
 
         <p className="mt-3 text-xs leading-relaxed text-muted">
           APYs are current live rates (DefiLlama); the blended figure and the projection
-          are weighted by allocation. The projection is illustrative, not a guarantee.
+          are weighted by your allocation. The projection is illustrative, not a guarantee.
         </p>
 
         {/* Each allocation, explained */}
         <div className="mt-10 border-t border-hairline pt-8">
           <div className="label mb-4">Each allocation, explained</div>
           <div className="flex flex-col gap-4">
-            {s.allocations.map((a) => (
-              <AllocationExplain key={a.protocol} a={a} />
+            {s.allocations.map((a, i) => (
+              <AllocationExplain key={a.protocol} a={a} weight={Math.round(share(i) * 100)} />
             ))}
           </div>
         </div>
@@ -378,7 +426,86 @@ function ProposalView(props: {
   );
 }
 
-function AllocationExplain({ a }: { a: Allocation }) {
+function AllocationEditor({
+  allocations,
+  weights,
+  total,
+  edited,
+  onChange,
+  onNormalize,
+  onReset,
+}: {
+  allocations: Allocation[];
+  weights: number[];
+  total: number;
+  edited: boolean;
+  onChange: (i: number, v: number) => void;
+  onNormalize: () => void;
+  onReset: () => void;
+}) {
+  const off = total !== 100;
+  return (
+    <div className="mt-8 border-t border-hairline pt-8">
+      <div className="mb-1 flex flex-wrap items-center justify-between gap-3">
+        <div className="label">Customize allocation</div>
+        <div className="flex items-center gap-4 text-sm">
+          <span className={`num ${off ? "text-warn" : "text-muted"}`}>Total {total}%</span>
+          {off && (
+            <button type="button" onClick={onNormalize} className="focusable text-near hover:underline">
+              Normalize to 100%
+            </button>
+          )}
+          {edited && (
+            <button type="button" onClick={onReset} className="focusable text-muted hover:text-ink">
+              Reset
+            </button>
+          )}
+        </div>
+      </div>
+      <p className="mb-4 text-xs leading-relaxed text-muted">
+        Drag or type to rebalance. The blended APY, risk and every chart below update
+        live. Normalize rescales the weights to 100%.
+      </p>
+      <div className="flex flex-col gap-3">
+        {allocations.map((a, i) => (
+          <div key={a.protocol} className="flex items-center gap-3 sm:gap-4">
+            <div className="w-32 shrink-0 truncate text-sm text-ink sm:w-44">
+              {a.label}
+              {a.apyMarket && <span className="text-muted"> · {a.apyMarket}</span>}
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={weights[i]}
+              onChange={(e) => onChange(i, Number(e.target.value))}
+              style={{ accentColor: "var(--red-brand)" }}
+              className="h-1.5 flex-1 cursor-pointer"
+              aria-label={`${a.label} weight`}
+            />
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                min={0}
+                max={100}
+                value={weights[i]}
+                onChange={(e) => onChange(i, Number(e.target.value))}
+                className="w-14 rounded-md border border-edge bg-mist px-2 py-1 text-right text-sm text-ink focus:border-near focus:outline-none"
+              />
+              <span className="text-sm text-muted">%</span>
+            </div>
+            <span className="num hidden w-16 shrink-0 text-right text-xs text-muted sm:inline">
+              {(a.apyBps / 100).toFixed(2)}% APY
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AllocationExplain({ a, weight }: { a: Allocation; weight?: number }) {
+  const w = weight ?? a.weightPct;
   return (
     <div className="surface-card p-5">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 border-b border-hairline pb-3">
@@ -388,7 +515,7 @@ function AllocationExplain({ a }: { a: Allocation }) {
           <span className="ml-2 text-sm font-normal text-muted">· {a.chain}</span>
         </div>
         <div className="text-sm text-muted">
-          <span className="num text-ink">{a.weightPct}%</span> weight ·{" "}
+          <span className="num text-ink">{w}%</span> weight ·{" "}
           <span className="num text-ink">{(a.apyBps / 100).toFixed(2)}%</span> APY ·{" "}
           <span className="uppercase">{a.exposure}</span> · risk{" "}
           <span className="num text-ink">{a.riskScore}</span>/100
