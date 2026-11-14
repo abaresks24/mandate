@@ -11,6 +11,11 @@ Hackathon "Build Beyond Boundaries" (track: AI Security & Defense).
 **Live demo:** https://yieldai-fi.vercel.app (reads the live testnet
 contracts) · **Repo:** https://github.com/abaresks24/yieldai
 
+> 🛠️ **Picking this project up / running the demo?** Start with
+> **[`HANDOFF.md`](HANDOFF.md)** — a full continue-here guide (status, repo map,
+> deployed addresses, env & secrets, how to run/ship every part, the demo
+> runbook, and the gotchas). Written for the next dev and their AI agent.
+
 ## Use it from your terminal (CLI)
 
 The protocol is usable programmatically — same AI proposal + on-chain pipeline, from a shell. No install, no API key (AI calls go through the live endpoint; reads hit testnet RPC directly):
